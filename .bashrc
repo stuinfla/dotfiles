@@ -28,8 +28,18 @@ export -f claude
 # Verify key environment variables are set (for debugging)
 if [ -n "$CODESPACES" ]; then
     # We're in a Codespace - secrets should be available
-    if [ -z "$ANTHROPIC_API_KEY" ]; then
-        echo "⚠️  WARNING: ANTHROPIC_API_KEY not set. Configure at https://github.com/settings/codespaces"
+
+    # CLAUDE_API_KEY and ANTHROPIC_API_KEY are the same thing
+    # If one is set, use it for both names for compatibility
+    if [ -n "$CLAUDE_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
+        export ANTHROPIC_API_KEY="$CLAUDE_API_KEY"
+    elif [ -n "$ANTHROPIC_API_KEY" ] && [ -z "$CLAUDE_API_KEY" ]; then
+        export CLAUDE_API_KEY="$ANTHROPIC_API_KEY"
+    fi
+
+    # Warn only if neither is set
+    if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$CLAUDE_API_KEY" ]; then
+        echo "⚠️  WARNING: ANTHROPIC_API_KEY/CLAUDE_API_KEY not set. Configure at https://github.com/settings/codespaces"
     fi
 fi
 
@@ -112,12 +122,18 @@ check_secrets() {
 
     declare -a SECRETS=(
         "ANTHROPIC_API_KEY"
+        "CLAUDE_API_KEY"
         "BRAVE_API_KEY"
         "OPENAI_API_KEY"
         "GITHUB_ACCESS_TOKEN"
         "GITHUB_TOKEN"
         "GOOGLE_GEMINI_API_KEY"
-        "HUGGINGFACE_API_KEY"
+        "GROQ_API_KEY"
+        "GROK_AI_KEY"
+        "APIFY_KEY"
+        "GOOGLE_MAPS_API_KEY"
+        "IMGBB_API_KEY"
+        "NETLIFY_AUTH_TOKEN"
     )
 
     for secret in "${SECRETS[@]}"; do
