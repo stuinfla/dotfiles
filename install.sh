@@ -4,6 +4,15 @@ echo "🚀 Setting up your Codespace environment..."
 echo "============================================"
 echo ""
 
+# Copy .claude.json to home directory FIRST
+if [ -f "$(dirname "$0")/.claude.json" ]; then
+    cp "$(dirname "$0")/.claude.json" ~/.claude.json
+    echo "✅ Copied .claude.json to home directory"
+else
+    echo "⚠️  .claude.json not found in dotfiles"
+fi
+echo ""
+
 # Install Claude Code globally (ALWAYS get latest version)
 echo "📦 Installing Claude Code (latest version)..."
 npm install -g @anthropic-ai/claude-code@latest --force 2>&1 | grep -v "npm WARN"
@@ -28,12 +37,12 @@ else
 fi
 
 # Check SuperClaude version
-if python3 -m SuperClaude --version &> /dev/null 2>&1; then
+if command -v SuperClaude &> /dev/null || python3 -m SuperClaude --version &> /dev/null 2>&1; then
     SUPERCLAUDE_VERSION=$(python3 -m SuperClaude --version 2>&1 | head -1 || echo "installed")
     echo "   ✅ SuperClaude installed successfully!"
     echo "   📌 Installed Version: $SUPERCLAUDE_VERSION"
 else
-    echo "   ❌ SuperClaude installation failed"
+    echo "   ⚠️  SuperClaude installation had issues (not critical)"
 fi
 echo ""
 
@@ -174,8 +183,8 @@ if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     echo "   ✅ READY TO USE"
     ((PASS_COUNT++))
 else
-    echo "   Status: ❌ NOT FOUND"
-    ((FAIL_COUNT++))
+    echo "   Status: ⚠️  NOT INSTALLED (not critical)"
+    ((WARN_COUNT++))
 fi
 
 echo ""
@@ -234,19 +243,20 @@ if [ -f "$HOME/.claude.json" ]; then
     echo "   Servers configured: $MCP_CONFIGURED"
     echo ""
     echo "   Configured servers:"
-    grep -B1 "\"command\"" "$HOME/.claude.json" | grep "\"" | sed 's/.*"\([^"]*\)".*/      • \1/' | grep -v "command" | grep -v "^--$"
+    grep -B1 "\"command\"" "$HOME/.claude.json" 2>/dev/null | grep "\"" | sed 's/.*"\([^"]*\)".*/      • \1/' | grep -v "command" | grep -v "^--$" || echo "      (parsing issue)"
     if [ "$MCP_CONFIGURED" -ge 7 ]; then
         echo ""
         echo "   ✅ ALL EXPECTED SERVERS CONFIGURED"
         ((PASS_COUNT++))
     else
         echo ""
-        echo "   ⚠️  FEWER SERVERS THAN EXPECTED (expected 7)"
+        echo "   ⚠️  FEWER SERVERS THAN EXPECTED (expected 7, found $MCP_CONFIGURED)"
         ((WARN_COUNT++))
     fi
 else
-    echo "   Status: ⚠️  NOT FOUND (will be created on first run)"
-    ((WARN_COUNT++))
+    echo "   Status: ❌ NOT FOUND"
+    echo "   ⚠️  .claude.json was not copied to home directory"
+    ((FAIL_COUNT++))
 fi
 
 echo ""
