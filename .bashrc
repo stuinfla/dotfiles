@@ -17,30 +17,30 @@ auto_update_tools() {
         fi
     fi
     
-    echo "🔄 Checking for updates to Claude Code, SuperClaude, and MCP servers..."
+    echo "🔄 Checking for updates (forcing latest versions)..."
     
-    # Update Claude Code
-    npm update -g @anthropic-ai/claude-code &>/dev/null &
+    # Update Claude Code (FORCE LATEST)
+    npm update -g @anthropic-ai/claude-code@latest --force &>/dev/null &
     
-    # Update SuperClaude
+    # Update SuperClaude (FORCE LATEST)
     if command -v pipx &> /dev/null; then
         pipx upgrade SuperClaude &>/dev/null &
     else
-        pip install --break-system-packages --user SuperClaude --upgrade &>/dev/null &
+        pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude &>/dev/null &
     fi
     
-    # Update MCP servers
-    npm update -g mcp-installer &>/dev/null &
-    npm update -g @modelcontextprotocol/server-brave-search &>/dev/null &
-    npm update -g @modelcontextprotocol/server-github &>/dev/null &
-    npm update -g @modelcontextprotocol/server-filesystem &>/dev/null &
-    npm update -g @playwright/mcp &>/dev/null &
-    npm update -g @modelcontextprotocol/server-sequential-thinking &>/dev/null &
-    pip install --break-system-packages --user mcp-server-fetch --upgrade &>/dev/null &
+    # Update MCP servers (FORCE LATEST)
+    npm update -g mcp-installer@latest --force &>/dev/null &
+    npm update -g @modelcontextprotocol/server-brave-search@latest --force &>/dev/null &
+    npm update -g @modelcontextprotocol/server-github@latest --force &>/dev/null &
+    npm update -g @modelcontextprotocol/server-filesystem@latest --force &>/dev/null &
+    npm update -g @playwright/mcp@latest --force &>/dev/null &
+    npm update -g @modelcontextprotocol/server-sequential-thinking@latest --force &>/dev/null &
+    pip install --break-system-packages --user --upgrade --force-reinstall mcp-server-fetch &>/dev/null &
     
     # Mark as updated today
     echo "$current_date" > "$update_marker"
-    echo "✅ Update check complete!"
+    echo "✅ Update check complete (all packages set to latest)!"
 }
 
 # Run auto-update in background (once per day)
