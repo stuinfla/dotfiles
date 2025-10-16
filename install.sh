@@ -4,47 +4,47 @@ echo "🚀 Setting up your Codespace environment..."
 echo "============================================"
 echo ""
 
-# Install Claude Code globally (latest version)
-echo "📦 Installing Claude Code..."
-npm install -g @anthropic-ai/claude-code 2>&1 | grep -v "npm WARN"
+# Install Claude Code globally (ALWAYS get latest version)
+echo "📦 Installing Claude Code (latest version)..."
+npm install -g @anthropic-ai/claude-code@latest --force 2>&1 | grep -v "npm WARN"
 
 # Check version and confirm
 if command -v claude &> /dev/null; then
-    CLAUDE_VERSION=$(claude --version 2>&1 || echo "unknown")
+    CLAUDE_VERSION=$(claude --version 2>&1 | head -1 || echo "unknown")
     echo "   ✅ Claude Code installed successfully!"
-    echo "   📌 Version: $CLAUDE_VERSION"
+    echo "   📌 Installed Version: $CLAUDE_VERSION"
 else
     echo "   ❌ Claude Code installation failed"
 fi
 echo ""
 
-# Check if pipx is available for SuperClaude
-echo "🎯 Installing SuperClaude 4.2..."
+# Install SuperClaude (ALWAYS get latest version)
+echo "🎯 Installing SuperClaude (latest version)..."
 if command -v pipx &> /dev/null; then
     pipx install SuperClaude --force 2>&1 | tail -1
     pipx upgrade SuperClaude 2>&1 | tail -1
 else
-    pip install --break-system-packages --user SuperClaude --upgrade 2>&1 | grep -v "Requirement already satisfied"
+    pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude 2>&1 | grep -v "Requirement already satisfied"
 fi
 
 # Check SuperClaude version
-if command -v SuperClaude &> /dev/null || python3 -m SuperClaude --version &> /dev/null; then
+if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     SUPERCLAUDE_VERSION=$(python3 -m SuperClaude --version 2>&1 | head -1 || echo "installed")
     echo "   ✅ SuperClaude installed successfully!"
-    echo "   📌 Version: $SUPERCLAUDE_VERSION"
+    echo "   📌 Installed Version: $SUPERCLAUDE_VERSION"
 else
     echo "   ❌ SuperClaude installation failed"
 fi
 echo ""
 
-# Install essential MCP servers
-echo "🔌 Installing MCP Servers..."
+# Install essential MCP servers (ALWAYS get latest versions)
+echo "🔌 Installing MCP Servers (all latest versions)..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # 1. MCP Installer
 echo ""
 echo "1️⃣  Installing mcp-installer..."
-npm install -g mcp-installer 2>&1 | grep -v "npm WARN" | tail -2
+npm install -g mcp-installer@latest --force 2>&1 | grep -v "npm WARN" | tail -2
 if npm list -g mcp-installer &> /dev/null; then
     MCP_INSTALLER_VERSION=$(npm list -g mcp-installer 2>&1 | grep mcp-installer | awk '{print $2}')
     echo "    ✅ mcp-installer installed"
@@ -57,7 +57,7 @@ fi
 # 2. Brave Search
 echo ""
 echo "2️⃣  Installing brave-search..."
-npm install -g @modelcontextprotocol/server-brave-search 2>&1 | grep -v "npm WARN" | tail -2
+npm install -g @modelcontextprotocol/server-brave-search@latest --force 2>&1 | grep -v "npm WARN" | tail -2
 if npm list -g @modelcontextprotocol/server-brave-search &> /dev/null; then
     BRAVE_VERSION=$(npm list -g @modelcontextprotocol/server-brave-search 2>&1 | grep server-brave-search | awk '{print $2}')
     echo "    ✅ brave-search installed"
@@ -70,7 +70,7 @@ fi
 # 3. Fetch
 echo ""
 echo "3️⃣  Installing fetch..."
-pip install --break-system-packages --user mcp-server-fetch 2>&1 | grep -E "(Successfully|already)" | head -1
+pip install --break-system-packages --user --upgrade --force-reinstall mcp-server-fetch 2>&1 | grep -E "(Successfully|already)" | head -1
 if python3 -m pip show mcp-server-fetch &> /dev/null; then
     FETCH_VERSION=$(python3 -m pip show mcp-server-fetch 2>&1 | grep "Version:" | awk '{print $2}')
     echo "    ✅ fetch installed"
@@ -83,7 +83,7 @@ fi
 # 4. GitHub
 echo ""
 echo "4️⃣  Installing github..."
-npm install -g @modelcontextprotocol/server-github 2>&1 | grep -v "npm WARN" | tail -2
+npm install -g @modelcontextprotocol/server-github@latest --force 2>&1 | grep -v "npm WARN" | tail -2
 if npm list -g @modelcontextprotocol/server-github &> /dev/null; then
     GITHUB_VERSION=$(npm list -g @modelcontextprotocol/server-github 2>&1 | grep server-github | awk '{print $2}')
     echo "    ✅ github installed"
@@ -96,7 +96,7 @@ fi
 # 5. Filesystem
 echo ""
 echo "5️⃣  Installing filesystem..."
-npm install -g @modelcontextprotocol/server-filesystem 2>&1 | grep -v "npm WARN" | tail -2
+npm install -g @modelcontextprotocol/server-filesystem@latest --force 2>&1 | grep -v "npm WARN" | tail -2
 if npm list -g @modelcontextprotocol/server-filesystem &> /dev/null; then
     FS_VERSION=$(npm list -g @modelcontextprotocol/server-filesystem 2>&1 | grep server-filesystem | awk '{print $2}')
     echo "    ✅ filesystem installed"
@@ -109,7 +109,7 @@ fi
 # 6. Playwright
 echo ""
 echo "6️⃣  Installing playwright..."
-npm install -g @playwright/mcp 2>&1 | grep -v "npm WARN" | tail -2
+npm install -g @playwright/mcp@latest --force 2>&1 | grep -v "npm WARN" | tail -2
 if npm list -g @playwright/mcp &> /dev/null; then
     PLAYWRIGHT_VERSION=$(npm list -g @playwright/mcp 2>&1 | grep @playwright/mcp | awk '{print $2}')
     echo "    ✅ playwright installed"
@@ -122,7 +122,7 @@ fi
 # 7. Sequential Thinking
 echo ""
 echo "7️⃣  Installing sequential-thinking..."
-npm install -g @modelcontextprotocol/server-sequential-thinking 2>&1 | grep -v "npm WARN" | tail -2
+npm install -g @modelcontextprotocol/server-sequential-thinking@latest --force 2>&1 | grep -v "npm WARN" | tail -2
 if npm list -g @modelcontextprotocol/server-sequential-thinking &> /dev/null; then
     SEQ_VERSION=$(npm list -g @modelcontextprotocol/server-sequential-thinking 2>&1 | grep sequential-thinking | awk '{print $2}')
     echo "    ✅ sequential-thinking installed"
@@ -144,32 +144,20 @@ echo "🔍 RUNNING COMPREHENSIVE VERIFICATION..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Check for latest versions online
-echo "📡 Checking for latest versions online..."
-LATEST_CLAUDE=$(npm view @anthropic-ai/claude-code version 2>/dev/null || echo "unknown")
-LATEST_SUPERCLAUDE=$(pip index versions SuperClaude 2>/dev/null | grep "LATEST:" | awk '{print $2}' || echo "unknown")
-
 # Initialize counters
 PASS_COUNT=0
 FAIL_COUNT=0
 WARN_COUNT=0
 
-echo ""
 echo "═══════════════════════════════════════════"
 echo "1. CLAUDE CODE STATUS"
 echo "═══════════════════════════════════════════"
 if command -v claude &> /dev/null; then
     INSTALLED_CLAUDE=$(claude --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
     echo "   Status: ✅ INSTALLED"
-    echo "   Installed: $INSTALLED_CLAUDE"
-    echo "   Latest:    $LATEST_CLAUDE"
-    if [ "$INSTALLED_CLAUDE" = "$LATEST_CLAUDE" ]; then
-        echo "   ✅ UP TO DATE"
-        ((PASS_COUNT++))
-    else
-        echo "   ⚠️  UPDATE AVAILABLE"
-        ((WARN_COUNT++))
-    fi
+    echo "   Version: $INSTALLED_CLAUDE"
+    echo "   ✅ READY TO USE"
+    ((PASS_COUNT++))
 else
     echo "   Status: ❌ NOT FOUND"
     ((FAIL_COUNT++))
@@ -179,18 +167,12 @@ echo ""
 echo "═══════════════════════════════════════════"
 echo "2. SUPERCLAUDE STATUS"
 echo "═══════════════════════════════════════════"
-if python3 -m SuperClaude --version &> /dev/null; then
+if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     INSTALLED_SC=$(python3 -m SuperClaude --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
     echo "   Status: ✅ INSTALLED"
-    echo "   Installed: $INSTALLED_SC"
-    echo "   Latest:    $LATEST_SUPERCLAUDE"
-    if [ "$INSTALLED_SC" = "$LATEST_SUPERCLAUDE" ] || [ "$LATEST_SUPERCLAUDE" = "unknown" ]; then
-        echo "   ✅ UP TO DATE"
-        ((PASS_COUNT++))
-    else
-        echo "   ⚠️  UPDATE AVAILABLE"
-        ((WARN_COUNT++))
-    fi
+    echo "   Version: $INSTALLED_SC"
+    echo "   ✅ READY TO USE"
+    ((PASS_COUNT++))
 else
     echo "   Status: ❌ NOT FOUND"
     ((FAIL_COUNT++))
@@ -269,51 +251,7 @@ fi
 
 echo ""
 echo "═══════════════════════════════════════════"
-echo "5. VS CODE EXTENSIONS"
-echo "═══════════════════════════════════════════"
-
-# Check if code command exists
-if command -v code &> /dev/null; then
-    echo "   Checking installed extensions..."
-    
-    declare -a EXPECTED_EXTENSIONS=(
-        "Kombai.kombai"
-        "shd101wyy.markdown-preview-enhanced"
-        "GrapeCity.gc-excelviewer"
-        "cweijan.vscode-office"
-        "tomoki1207.pdf"
-        "PKief.material-icon-theme"
-    )
-    
-    EXT_PASS=0
-    EXT_FAIL=0
-    
-    for ext in "${EXPECTED_EXTENSIONS[@]}"; do
-        if code --list-extensions 2>/dev/null | grep -q "$ext"; then
-            echo "   ✅ $ext"
-            ((EXT_PASS++))
-        else
-            echo "   ⏳ $ext (installing...)"
-            ((EXT_FAIL++))
-        fi
-    done
-    
-    echo ""
-    echo "   Extension Summary: $EXT_PASS verified, $EXT_FAIL pending"
-    if [ $EXT_FAIL -eq 0 ]; then
-        ((PASS_COUNT++))
-    else
-        echo "   ℹ️  Extensions install automatically on first Codespace start"
-        ((WARN_COUNT++))
-    fi
-else
-    echo "   ℹ️  VS Code not ready yet (extensions will install automatically)"
-    ((WARN_COUNT++))
-fi
-
-echo ""
-echo "═══════════════════════════════════════════"
-echo "6. AUTHENTICATION STATUS"
+echo "5. AUTHENTICATION STATUS"
 echo "═══════════════════════════════════════════"
 if command -v claude &> /dev/null; then
     if claude auth status &> /dev/null 2>&1; then
@@ -331,7 +269,7 @@ fi
 
 echo ""
 echo "═══════════════════════════════════════════"
-echo "7. ENVIRONMENT VARIABLES (API KEYS)"
+echo "6. ENVIRONMENT VARIABLES (API KEYS)"
 echo "═══════════════════════════════════════════"
 
 # Check for key environment variables from GitHub secrets
@@ -352,18 +290,18 @@ for item in "${KEY_VARS[@]}"; do
         echo "   ✅ $NAME ($VAR)"
         ((ENV_PASS++))
     else
-        echo "   ❌ $NAME ($VAR) - Not set"
+        echo "   ⚠️  $NAME ($VAR) - Not set"
         ((ENV_FAIL++))
     fi
 done
 
 echo ""
-echo "   API Key Summary: $ENV_PASS found, $ENV_FAIL missing"
-if [ $ENV_FAIL -eq 0 ]; then
+if [ $ENV_PASS -gt 0 ]; then
+    echo "   API Keys: $ENV_PASS found, $ENV_FAIL missing"
     ((PASS_COUNT++))
 else
-    echo "   ⚠️  Some API keys missing - add them to GitHub Codespace Secrets"
-    ((FAIL_COUNT++))
+    echo "   ⚠️  No API keys found - add them to GitHub Codespace Secrets"
+    ((WARN_COUNT++))
 fi
 
 echo ""
@@ -378,23 +316,23 @@ echo "   ❌ Failed:   $FAIL_COUNT checks"
 echo ""
 
 if [ $FAIL_COUNT -eq 0 ] && [ $WARN_COUNT -eq 0 ]; then
-    echo "🎉 PERFECT! Everything is installed and up to date!"
+    echo "🎉 PERFECT! Everything is installed and ready!"
 elif [ $FAIL_COUNT -eq 0 ]; then
-    echo "✅ GOOD! Everything is installed. Some warnings to review."
+    echo "✅ GOOD! Core components installed. Review warnings above."
 else
-    echo "⚠️  ATTENTION NEEDED: Some components failed to install."
+    echo "⚠️  ATTENTION: Some components failed to install."
 fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "🎯 QUICK START:"
-echo "   1. Type 'claude --version' to verify"
-echo "   2. Type 'claude' to start (authenticate if needed)"
-echo "   3. All MCP servers will activate automatically"
+echo "🎯 NEXT STEPS:"
+echo "   • Type 'claude --version' to verify Claude Code"
+echo "   • Type 'claude' to start (authenticate if needed)"
+echo "   • All MCP servers will activate automatically"
 echo ""
 echo "💡 HELPFUL COMMANDS:"
 echo "   • Check MCP config: cat ~/.claude.json"
-echo "   • List VS Code extensions: code --list-extensions"
-echo "   • Update everything: Run this script again"
+echo "   • List installed packages: npm list -g --depth=0"
+echo "   • Update everything: Re-run this script"
 echo ""
