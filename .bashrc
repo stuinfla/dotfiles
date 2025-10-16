@@ -1,5 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════
 # GITHUB CODESPACES - DOTFILES CONFIGURATION
+# Updated: 2025-10-16 - Added session resume, optimizations, security fixes
 # ═══════════════════════════════════════════════════════════════════
 
 # Ensure PATH includes npm global packages
@@ -10,10 +11,15 @@ export PATH="$HOME/.local/bin:$PATH"
 # CLAUDE CODE CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════
 
-# Claude Code function - runs with --dangerously-skip-permissions
+# SESSION RESUME SUPPORT - NEW!
+# This allows Claude to remember context between sessions
+export CLAUDE_SESSION_DIR="$HOME/.claude-sessions"
+mkdir -p "$CLAUDE_SESSION_DIR"
+
+# Claude Code function - runs with --dangerously-skip-permissions AND session support
 # Using a function instead of alias for better reliability
 claude() {
-    command claude --dangerously-skip-permissions "$@"
+    command claude --dangerously-skip-permissions --session-dir "$CLAUDE_SESSION_DIR" "$@"
 }
 export -f claude
 
@@ -44,14 +50,16 @@ if [ -n "$CODESPACES" ]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# AUTO-UPDATE MECHANISM
+# AUTO-UPDATE MECHANISM (WITH TIMEOUT PROTECTION - NEW!)
 # ═══════════════════════════════════════════════════════════════════
 
 # Auto-update function (runs once per day max, non-blocking)
+# NEW: Added timeout protection to prevent hangs
 auto_update_tools() {
     local update_marker="$HOME/.cache/claude_tools_updated"
     local update_log="$HOME/.cache/claude_update.log"
     local current_date=$(date +%Y-%m-%d)
+    local timeout_seconds=300  # 5 minutes max for updates
 
     # Create cache directory if it doesn't exist
     mkdir -p "$HOME/.cache"
@@ -64,35 +72,35 @@ auto_update_tools() {
         fi
     fi
 
-    echo "🔄 Checking for updates (running in background)..."
+    echo "🔄 Checking for updates (running in background with ${timeout_seconds}s timeout)..."
 
     # Run updates in background to not block shell startup
     {
         echo "=== Update started at $(date) ===" > "$update_log"
 
-        # Update Claude Code
+        # Update Claude Code (with timeout)
         echo "Updating Claude Code..." >> "$update_log"
-        npm update -g @anthropic-ai/claude-code@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g @anthropic-ai/claude-code@latest --force >> "$update_log" 2>&1 || echo "Claude Code update timed out or failed" >> "$update_log"
 
-        # Update SuperClaude
+        # Update SuperClaude (with timeout)
         echo "Updating SuperClaude..." >> "$update_log"
         if command -v pipx &> /dev/null; then
-            pipx upgrade SuperClaude >> "$update_log" 2>&1
+            timeout $timeout_seconds pipx upgrade SuperClaude >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
         else
-            pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude >> "$update_log" 2>&1
+            timeout $timeout_seconds pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
         fi
 
-        # Update MCP servers
+        # Update MCP servers (with timeout for each)
         echo "Updating MCP servers..." >> "$update_log"
-        npm update -g mcp-installer@latest --force >> "$update_log" 2>&1
-        npm update -g @modelcontextprotocol/server-brave-search@latest --force >> "$update_log" 2>&1
-        npm update -g @modelcontextprotocol/server-github@latest --force >> "$update_log" 2>&1
-        npm update -g @modelcontextprotocol/server-filesystem@latest --force >> "$update_log" 2>&1
-        npm update -g @playwright/mcp@latest --force >> "$update_log" 2>&1
-        npm update -g @modelcontextprotocol/server-sequential-thinking@latest --force >> "$update_log" 2>&1
-        npm update -g @modelcontextprotocol/server-gdrive@latest --force >> "$update_log" 2>&1
-        npm update -g @huggingface/mcp-server-huggingface@latest --force >> "$update_log" 2>&1
-        pip install --break-system-packages --user --upgrade --force-reinstall mcp-server-fetch >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g mcp-installer@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-brave-search@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-github@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-filesystem@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g @playwright/mcp@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-sequential-thinking@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-gdrive@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds npm update -g @huggingface/mcp-server-huggingface@latest --force >> "$update_log" 2>&1
+        timeout $timeout_seconds pip install --break-system-packages --user --upgrade --force-reinstall mcp-server-fetch >> "$update_log" 2>&1
 
         echo "=== Update completed at $(date) ===" >> "$update_log"
 
@@ -134,6 +142,7 @@ check_secrets() {
         "GOOGLE_MAPS_API_KEY"
         "IMGBB_API_KEY"
         "NETLIFY_AUTH_TOKEN"
+        "HUGGINGFACE_API_KEY"
     )
 
     for secret in "${SECRETS[@]}"; do
@@ -156,6 +165,22 @@ check_versions() {
     echo "SuperClaude: $(python3 -m SuperClaude --version 2>/dev/null || echo 'Not installed')"
     echo "Node.js: $(node --version 2>/dev/null || echo 'Not installed')"
     echo "Python: $(python3 --version 2>/dev/null || echo 'Not installed')"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+# NEW: Check Claude session directory
+check_sessions() {
+    echo "Claude Sessions:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if [ -d "$CLAUDE_SESSION_DIR" ]; then
+        echo "Session directory: $CLAUDE_SESSION_DIR"
+        echo "Sessions found: $(ls -1 "$CLAUDE_SESSION_DIR" 2>/dev/null | wc -l)"
+        echo ""
+        echo "Recent sessions:"
+        ls -lt "$CLAUDE_SESSION_DIR" 2>/dev/null | head -6
+    else
+        echo "No session directory found"
+    fi
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
@@ -205,10 +230,12 @@ if [ -n "$CODESPACES" ]; then
     echo "✅ Claude Code installed (type 'claude' to start)"
     echo "✅ SuperClaude installed (use /sc: commands)"
     echo "✅ MCP servers configured"
+    echo "✅ Session resume enabled ($CLAUDE_SESSION_DIR)"
     echo ""
     echo "💡 Helpful commands:"
     echo "   • check_secrets     - Verify API keys are loaded"
     echo "   • check_versions    - Show installed versions"
+    echo "   • check_sessions    - View Claude sessions"
     echo "   • rename-codespace  - Rename to match repository"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""

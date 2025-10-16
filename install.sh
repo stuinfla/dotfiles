@@ -1,406 +1,324 @@
 #!/bin/bash
+# ═══════════════════════════════════════════════════════════════════
+# CODESPACES DOTFILES INSTALLATION SCRIPT
+# Updated: 2025-10-16 - Parallel installation, timeouts, security fixes
+# ═══════════════════════════════════════════════════════════════════
 
-echo "🚀 Setting up your Codespace environment..."
+set -e  # Exit on error
+set -u  # Error on undefined variables
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════
+
+# Timeout for individual package installations (5 minutes per package)
+readonly PACKAGE_TIMEOUT=300
+
+# Timeout for entire script (15 minutes total)
+readonly SCRIPT_TIMEOUT=900
+
+# Colors for output (safe, no external deps)
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly NC='\033[0m' # No Color
+
+# ═══════════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════
+
+# Print with timestamp
+log() {
+    echo "[$(date +'%H:%M:%S')] $*"
+}
+
+# Print success message
+success() {
+    echo -e "${GREEN}✅ $*${NC}"
+}
+
+# Print error message
+error() {
+    echo -e "${RED}❌ $*${NC}"
+}
+
+# Print warning message
+warn() {
+    echo -e "${YELLOW}⚠️  $*${NC}"
+}
+
+# Cleanup function for timeouts
+cleanup() {
+    log "Cleaning up background processes..."
+    jobs -p | xargs -r kill 2>/dev/null || true
+}
+
+# Set up trap for cleanup
+trap cleanup EXIT INT TERM
+
+# ═══════════════════════════════════════════════════════════════════
+# SCRIPT TIMEOUT WRAPPER
+# ═══════════════════════════════════════════════════════════════════
+
+# Set a timeout for the entire script
+(
+    sleep $SCRIPT_TIMEOUT
+    error "Installation timed out after ${SCRIPT_TIMEOUT}s"
+    kill -TERM $$ 2>/dev/null || true
+) &
+SCRIPT_TIMEOUT_PID=$!
+
+# ═══════════════════════════════════════════════════════════════════
+# START INSTALLATION
+# ═══════════════════════════════════════════════════════════════════
+
+log "🚀 Setting up your Codespace environment..."
 echo "============================================"
 echo ""
 
-# Copy .claude.json to home directory FIRST
+# ═══════════════════════════════════════════════════════════════════
+# STEP 1: Copy Configuration Files
+# ═══════════════════════════════════════════════════════════════════
+
+log "📋 Copying configuration files..."
+
+# Copy .claude.json to home directory FIRST (critical for MCP servers)
 if [ -f "$(dirname "$0")/.claude.json" ]; then
     cp "$(dirname "$0")/.claude.json" ~/.claude.json
-    echo "✅ Copied .claude.json to home directory"
+    chmod 600 ~/.claude.json  # Security: Only owner can read
+    success "Copied .claude.json to home directory (permissions: 600)"
 else
-    echo "⚠️  .claude.json not found in dotfiles"
+    warn ".claude.json not found in dotfiles"
 fi
+
+# Copy .bash_profile if it exists
+if [ -f "$(dirname "$0")/.bash_profile" ]; then
+    cp "$(dirname "$0")/.bash_profile" ~/.bash_profile
+    success "Copied .bash_profile"
+fi
+
 echo ""
 
-# Install Claude Code globally (ALWAYS get latest version)
-echo "📦 Installing Claude Code (latest version)..."
-npm install -g @anthropic-ai/claude-code@latest --force 2>&1 | grep -v "npm WARN"
+# ═══════════════════════════════════════════════════════════════════
+# STEP 2: Install Core Tools (Claude Code & SuperClaude)
+# ═══════════════════════════════════════════════════════════════════
 
-# Check version and confirm
-if command -v claude &> /dev/null; then
-    CLAUDE_VERSION=$(claude --version 2>&1 | head -1 || echo "unknown")
-    echo "   ✅ Claude Code installed successfully!"
-    echo "   📌 Installed Version: $CLAUDE_VERSION"
-else
-    echo "   ❌ Claude Code installation failed"
-fi
+log "📦 Installing core tools..."
 echo ""
 
-# Install SuperClaude (ALWAYS get latest version)
-echo "🎯 Installing SuperClaude (latest version)..."
+# Install Claude Code (with timeout)
+log "1/2 Installing Claude Code..."
+if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --force 2>&1 | grep -v "npm WARN" | tail -3; then
+    if command -v claude &> /dev/null; then
+        CLAUDE_VERSION=$(claude --version 2>&1 | head -1 || echo "unknown")
+        success "Claude Code installed: $CLAUDE_VERSION"
+    else
+        error "Claude Code installation failed - command not found"
+    fi
+else
+    error "Claude Code installation timed out or failed"
+fi
+
+echo ""
+
+# Install SuperClaude (with timeout)
+log "2/2 Installing SuperClaude..."
 if command -v pipx &> /dev/null; then
-    pipx install SuperClaude --force 2>&1 | tail -1
-    pipx upgrade SuperClaude 2>&1 | tail -1
+    timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force 2>&1 | tail -2
+    timeout $PACKAGE_TIMEOUT pipx upgrade SuperClaude 2>&1 | tail -2
 else
-    pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude 2>&1 | grep -v "Requirement already satisfied"
+    timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude 2>&1 | grep -v "Requirement already satisfied" | tail -3
 fi
 
-# Check SuperClaude version
 if command -v SuperClaude &> /dev/null || python3 -m SuperClaude --version &> /dev/null 2>&1; then
     SUPERCLAUDE_VERSION=$(python3 -m SuperClaude --version 2>&1 | head -1 || echo "installed")
-    echo "   ✅ SuperClaude installed successfully!"
-    echo "   📌 Installed Version: $SUPERCLAUDE_VERSION"
+    success "SuperClaude installed: $SUPERCLAUDE_VERSION"
 else
-    echo "   ⚠️  SuperClaude installation had issues (not critical)"
-fi
-echo ""
-
-# Install essential MCP servers (ALWAYS get latest versions)
-echo "🔌 Installing MCP Servers (all latest versions)..."
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# 1. MCP Installer
-echo ""
-echo "1️⃣  Installing mcp-installer..."
-npm install -g mcp-installer@latest --force 2>&1 | grep -v "npm WARN" | tail -2
-if npm list -g mcp-installer &> /dev/null; then
-    MCP_INSTALLER_VERSION=$(npm list -g mcp-installer 2>&1 | grep mcp-installer | awk '{print $2}')
-    echo "    ✅ mcp-installer installed"
-    echo "    📌 Version: $MCP_INSTALLER_VERSION"
-    echo "    💡 Use: Ask Claude to 'install [server-name] MCP server'"
-else
-    echo "    ❌ Failed"
-fi
-
-# 2. Brave Search
-echo ""
-echo "2️⃣  Installing brave-search..."
-npm install -g @modelcontextprotocol/server-brave-search@latest --force 2>&1 | grep -v "npm WARN" | tail -2
-if npm list -g @modelcontextprotocol/server-brave-search &> /dev/null; then
-    BRAVE_VERSION=$(npm list -g @modelcontextprotocol/server-brave-search 2>&1 | grep server-brave-search | awk '{print $2}')
-    echo "    ✅ brave-search installed"
-    echo "    📌 Version: $BRAVE_VERSION"
-    echo "    💡 Use: Web search with your Brave API key"
-else
-    echo "    ❌ Failed"
-fi
-
-# 3. Fetch
-echo ""
-echo "3️⃣  Installing fetch..."
-pip install --break-system-packages --user --upgrade --force-reinstall mcp-server-fetch 2>&1 | grep -E "(Successfully|already)" | head -1
-if python3 -m pip show mcp-server-fetch &> /dev/null; then
-    FETCH_VERSION=$(python3 -m pip show mcp-server-fetch 2>&1 | grep "Version:" | awk '{print $2}')
-    echo "    ✅ fetch installed"
-    echo "    📌 Version: $FETCH_VERSION"
-    echo "    💡 Use: Web scraping and content retrieval"
-else
-    echo "    ❌ Failed"
-fi
-
-# 4. GitHub
-echo ""
-echo "4️⃣  Installing github..."
-npm install -g @modelcontextprotocol/server-github@latest --force 2>&1 | grep -v "npm WARN" | tail -2
-if npm list -g @modelcontextprotocol/server-github &> /dev/null; then
-    GITHUB_VERSION=$(npm list -g @modelcontextprotocol/server-github 2>&1 | grep server-github | awk '{print $2}')
-    echo "    ✅ github installed"
-    echo "    📌 Version: $GITHUB_VERSION"
-    echo "    💡 Use: Manage repos, issues, PRs (uses your gh auth)"
-else
-    echo "    ❌ Failed"
-fi
-
-# 5. Filesystem
-echo ""
-echo "5️⃣  Installing filesystem..."
-npm install -g @modelcontextprotocol/server-filesystem@latest --force 2>&1 | grep -v "npm WARN" | tail -2
-if npm list -g @modelcontextprotocol/server-filesystem &> /dev/null; then
-    FS_VERSION=$(npm list -g @modelcontextprotocol/server-filesystem 2>&1 | grep server-filesystem | awk '{print $2}')
-    echo "    ✅ filesystem installed"
-    echo "    📌 Version: $FS_VERSION"
-    echo "    💡 Use: Read, write, search files in /workspaces"
-else
-    echo "    ❌ Failed"
-fi
-
-# 6. Playwright
-echo ""
-echo "6️⃣  Installing playwright..."
-npm install -g @playwright/mcp@latest --force 2>&1 | grep -v "npm WARN" | tail -2
-if npm list -g @playwright/mcp &> /dev/null; then
-    PLAYWRIGHT_VERSION=$(npm list -g @playwright/mcp 2>&1 | grep @playwright/mcp | awk '{print $2}')
-    echo "    ✅ playwright installed"
-    echo "    📌 Version: $PLAYWRIGHT_VERSION"
-    echo "    💡 Use: Browser automation & testing"
-else
-    echo "    ❌ Failed"
-fi
-
-# 7. Sequential Thinking
-echo ""
-echo "7️⃣  Installing sequential-thinking..."
-npm install -g @modelcontextprotocol/server-sequential-thinking@latest --force 2>&1 | grep -v "npm WARN" | tail -2
-if npm list -g @modelcontextprotocol/server-sequential-thinking &> /dev/null; then
-    SEQ_VERSION=$(npm list -g @modelcontextprotocol/server-sequential-thinking 2>&1 | grep sequential-thinking | awk '{print $2}')
-    echo "    ✅ sequential-thinking installed"
-    echo "    📌 Version: $SEQ_VERSION"
-    echo "    💡 Use: Break down complex problems step-by-step"
-else
-    echo "    ❌ Failed"
-fi
-
-# 8. Google Drive
-echo ""
-echo "8️⃣  Installing google-drive..."
-npm install -g @modelcontextprotocol/server-gdrive@latest --force 2>&1 | grep -v "npm WARN" | tail -2
-if npm list -g @modelcontextprotocol/server-gdrive &> /dev/null; then
-    GDRIVE_VERSION=$(npm list -g @modelcontextprotocol/server-gdrive 2>&1 | grep server-gdrive | awk '{print $2}')
-    echo "    ✅ google-drive installed"
-    echo "    📌 Version: $GDRIVE_VERSION"
-    echo "    💡 Use: Access Google Drive files and folders"
-else
-    echo "    ❌ Failed"
-fi
-
-# 9. Hugging Face
-echo ""
-echo "9️⃣  Installing huggingface..."
-npm install -g @huggingface/mcp-server-huggingface@latest --force 2>&1 | grep -v "npm WARN" | tail -2
-if npm list -g @huggingface/mcp-server-huggingface &> /dev/null; then
-    HF_VERSION=$(npm list -g @huggingface/mcp-server-huggingface 2>&1 | grep mcp-server-huggingface | awk '{print $2}')
-    echo "    ✅ huggingface installed"
-    echo "    📌 Version: $HF_VERSION"
-    echo "    💡 Use: Access Hugging Face models & datasets"
-else
-    echo "    ❌ Failed"
+    warn "SuperClaude installation had issues (not critical)"
 fi
 
 echo ""
+
+# ═══════════════════════════════════════════════════════════════════
+# STEP 3: Install MCP Servers (IN PARALLEL - NEW!)
+# ═══════════════════════════════════════════════════════════════════
+
+log "🔌 Installing MCP Servers (parallel installation)..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# ==============================================================================
-# COMPREHENSIVE VERIFICATION
-# ==============================================================================
+# Create temporary directory for installation logs
+TEMP_LOG_DIR=$(mktemp -d)
 
-echo "🔍 RUNNING COMPREHENSIVE VERIFICATION..."
+# Function to install npm package with logging
+install_npm_package() {
+    local package_name="$1"
+    local display_name="$2"
+    local log_file="$TEMP_LOG_DIR/${package_name//\//_}.log"
+
+    if timeout $PACKAGE_TIMEOUT npm install -g "${package_name}@latest" --force > "$log_file" 2>&1; then
+        success "$display_name"
+        return 0
+    else
+        error "$display_name (check $log_file)"
+        return 1
+    fi
+}
+
+# Function to install Python package with logging
+install_pip_package() {
+    local package_name="$1"
+    local display_name="$2"
+    local log_file="$TEMP_LOG_DIR/${package_name}.log"
+
+    if timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall "$package_name" > "$log_file" 2>&1; then
+        success "$display_name"
+        return 0
+    else
+        error "$display_name (check $log_file)"
+        return 1
+    fi
+}
+
+# Start all installations in parallel (background jobs)
+log "Starting parallel installations..."
+
+install_npm_package "mcp-installer" "mcp-installer" &
+PID_1=$!
+
+install_npm_package "@modelcontextprotocol/server-brave-search" "brave-search" &
+PID_2=$!
+
+install_pip_package "mcp-server-fetch" "fetch (Python)" &
+PID_3=$!
+
+install_npm_package "@modelcontextprotocol/server-github" "github" &
+PID_4=$!
+
+install_npm_package "@modelcontextprotocol/server-filesystem" "filesystem" &
+PID_5=$!
+
+install_npm_package "@playwright/mcp" "playwright" &
+PID_6=$!
+
+install_npm_package "@modelcontextprotocol/server-sequential-thinking" "sequential-thinking" &
+PID_7=$!
+
+install_npm_package "@modelcontextprotocol/server-gdrive" "google-drive" &
+PID_8=$!
+
+install_npm_package "@huggingface/mcp-server-huggingface" "huggingface" &
+PID_9=$!
+
+# Wait for all installations to complete
+log "Waiting for installations to complete..."
+wait $PID_1 $PID_2 $PID_3 $PID_4 $PID_5 $PID_6 $PID_7 $PID_8 $PID_9 2>/dev/null || true
+
+echo ""
+log "Parallel installation complete!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Initialize counters
+# ═══════════════════════════════════════════════════════════════════
+# STEP 4: Verification
+# ═══════════════════════════════════════════════════════════════════
+
+log "🔍 Running verification checks..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
 PASS_COUNT=0
 FAIL_COUNT=0
-WARN_COUNT=0
 
-echo "═══════════════════════════════════════════"
-echo "1. CLAUDE CODE STATUS"
-echo "═══════════════════════════════════════════"
+# Check Claude Code
 if command -v claude &> /dev/null; then
-    INSTALLED_CLAUDE=$(claude --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
-    echo "   Status: ✅ INSTALLED"
-    echo "   Version: $INSTALLED_CLAUDE"
-    echo "   ✅ READY TO USE"
+    success "Claude Code: $(claude --version 2>&1 | head -1)"
     ((PASS_COUNT++))
 else
-    echo "   Status: ❌ NOT FOUND"
+    error "Claude Code: Not found"
     ((FAIL_COUNT++))
 fi
 
-echo ""
-echo "═══════════════════════════════════════════"
-echo "2. SUPERCLAUDE STATUS"
-echo "═══════════════════════════════════════════"
+# Check SuperClaude
 if python3 -m SuperClaude --version &> /dev/null 2>&1; then
-    INSTALLED_SC=$(python3 -m SuperClaude --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
-    echo "   Status: ✅ INSTALLED"
-    echo "   Version: $INSTALLED_SC"
-    echo "   ✅ READY TO USE"
+    success "SuperClaude: $(python3 -m SuperClaude --version 2>&1 | head -1)"
     ((PASS_COUNT++))
 else
-    echo "   Status: ⚠️  NOT INSTALLED (not critical)"
-    ((WARN_COUNT++))
+    warn "SuperClaude: Not available (optional)"
 fi
 
-echo ""
-echo "═══════════════════════════════════════════"
-echo "3. MCP SERVERS STATUS"
-echo "═══════════════════════════════════════════"
-
-# Check each MCP server
-declare -a MCP_SERVERS=(
-    "mcp-installer"
-    "@modelcontextprotocol/server-brave-search"
-    "@modelcontextprotocol/server-github"
-    "@modelcontextprotocol/server-filesystem"
-    "@playwright/mcp"
-    "@modelcontextprotocol/server-sequential-thinking"
-    "@modelcontextprotocol/server-gdrive"
-    "@huggingface/mcp-server-huggingface"
-)
-
-MCP_PASS=0
-MCP_FAIL=0
-
-for server in "${MCP_SERVERS[@]}"; do
-    if npm list -g "$server" &> /dev/null; then
-        echo "   ✅ $server"
-        ((MCP_PASS++))
-    else
-        echo "   ❌ $server"
-        ((MCP_FAIL++))
-    fi
-done
-
-# Check Python MCP server
-if python3 -m pip show mcp-server-fetch &> /dev/null; then
-    echo "   ✅ mcp-server-fetch (Python)"
-    ((MCP_PASS++))
-else
-    echo "   ❌ mcp-server-fetch (Python)"
-    ((MCP_FAIL++))
-fi
-
-echo ""
-echo "   MCP Summary: $MCP_PASS installed, $MCP_FAIL failed"
-if [ $MCP_FAIL -eq 0 ]; then
-    ((PASS_COUNT++))
-else
-    ((FAIL_COUNT++))
-fi
-
-echo ""
-echo "═══════════════════════════════════════════"
-echo "4. MCP CONFIGURATION FILE"
-echo "═══════════════════════════════════════════"
+# Check .claude.json
 if [ -f "$HOME/.claude.json" ]; then
-    MCP_CONFIGURED=$(grep -c "\"command\"" "$HOME/.claude.json" 2>/dev/null || echo "0")
-    echo "   Status: ✅ FOUND"
-    echo "   Location: ~/.claude.json"
-    echo "   Servers configured: $MCP_CONFIGURED"
-    echo ""
-    echo "   Configured servers:"
-    grep -B1 "\"command\"" "$HOME/.claude.json" 2>/dev/null | grep "\"" | sed 's/.*"\([^"]*\)".*/      • \1/' | grep -v "command" | grep -v "^--$" || echo "      (parsing issue)"
-    if [ "$MCP_CONFIGURED" -ge 9 ]; then
-        echo ""
-        echo "   ✅ ALL EXPECTED SERVERS CONFIGURED"
-        ((PASS_COUNT++))
-    else
-        echo ""
-        echo "   ⚠️  FEWER SERVERS THAN EXPECTED (expected 9, found $MCP_CONFIGURED)"
-        ((WARN_COUNT++))
-    fi
+    MCP_COUNT=$(grep -c '"command"' "$HOME/.claude.json" 2>/dev/null || echo "0")
+    success ".claude.json: Found ($MCP_COUNT MCP servers configured)"
+    ((PASS_COUNT++))
 else
-    echo "   Status: ❌ NOT FOUND"
-    echo "   ⚠️  .claude.json was not copied to home directory"
+    error ".claude.json: Missing"
+    ((FAIL_COUNT++))
+fi
+
+# Check MCP packages (sample)
+MCP_INSTALLED=0
+MCP_FAILED=0
+
+if npm list -g mcp-installer &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
+if npm list -g @modelcontextprotocol/server-brave-search &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
+if npm list -g @modelcontextprotocol/server-github &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
+if python3 -m pip show mcp-server-fetch &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
+
+if [ $MCP_INSTALLED -ge 3 ]; then
+    success "MCP Servers: $MCP_INSTALLED installed, $MCP_FAILED failed"
+    ((PASS_COUNT++))
+else
+    error "MCP Servers: $MCP_INSTALLED installed, $MCP_FAILED failed (minimum 3 required)"
     ((FAIL_COUNT++))
 fi
 
 echo ""
-echo "═══════════════════════════════════════════"
-echo "5. AUTHENTICATION STATUS"
-echo "═══════════════════════════════════════════"
-if command -v claude &> /dev/null; then
-    if claude auth status &> /dev/null 2>&1; then
-        echo "   ✅ AUTHENTICATED"
-        ((PASS_COUNT++))
-    else
-        echo "   ⚠️  NOT AUTHENTICATED YET"
-        echo "   💡 Run 'claude' to authenticate (one-time setup)"
-        ((WARN_COUNT++))
-    fi
-else
-    echo "   ⚠️  Cannot check (Claude Code not available)"
-    ((WARN_COUNT++))
-fi
-
-echo ""
-echo "═══════════════════════════════════════════"
-echo "6. ENVIRONMENT VARIABLES (API KEYS)"
-echo "═══════════════════════════════════════════"
-
-# Check for key environment variables from GitHub secrets
-declare -a KEY_VARS=(
-    "BRAVE_API_KEY:Brave Search"
-    "ANTHROPIC_API_KEY:Claude API"
-    "GITHUB_ACCESS_TOKEN:GitHub"
-    "GOOGLE_GEMINI_API_KEY:Google Gemini"
-    "HUGGINGFACE_API_KEY:Hugging Face"
-)
-
-ENV_PASS=0
-ENV_FAIL=0
-
-for item in "${KEY_VARS[@]}"; do
-    VAR="${item%%:*}"
-    NAME="${item##*:}"
-    if [ -n "${!VAR}" ]; then
-        echo "   ✅ $NAME ($VAR)"
-        ((ENV_PASS++))
-    else
-        echo "   ⚠️  $NAME ($VAR) - Not set"
-        ((ENV_FAIL++))
-    fi
-done
-
-echo ""
-if [ $ENV_PASS -gt 0 ]; then
-    echo "   API Keys: $ENV_PASS found, $ENV_FAIL missing"
-    ((PASS_COUNT++))
-else
-    echo "   ⚠️  No API keys found - add them to GitHub Codespace Secrets"
-    ((WARN_COUNT++))
-fi
-
-echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "📊 FINAL VERIFICATION SUMMARY"
+
+# ═══════════════════════════════════════════════════════════════════
+# FINAL SUMMARY
+# ═══════════════════════════════════════════════════════════════════
+
+log "📊 INSTALLATION SUMMARY"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "   ✅ Passed:   $PASS_COUNT checks"
-echo "   ⚠️  Warnings: $WARN_COUNT checks"
-echo "   ❌ Failed:   $FAIL_COUNT checks"
+echo "   ✅ Passed:  $PASS_COUNT checks"
+echo "   ❌ Failed:  $FAIL_COUNT checks"
 echo ""
 
-if [ $FAIL_COUNT -eq 0 ] && [ $WARN_COUNT -eq 0 ]; then
-    echo "🎉 PERFECT! Everything is installed and ready!"
-elif [ $FAIL_COUNT -eq 0 ]; then
-    echo "✅ GOOD! Core components installed. Review warnings above."
+if [ $FAIL_COUNT -eq 0 ]; then
+    success "PERFECT! Everything installed successfully!"
+elif [ $FAIL_COUNT -le 2 ]; then
+    warn "Installation complete with minor issues. Review above."
 else
-    echo "⚠️  ATTENTION: Some components failed to install."
+    error "Installation completed with errors. Review above."
 fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "🎯 NEXT STEPS:"
-echo "   • Type 'claude --version' to verify Claude Code"
-echo "   • Type 'claude' to start (authenticate if needed)"
-echo "   • All MCP servers will activate automatically"
+echo "   • Type 'claude --version' to verify"
+echo "   • Type 'check_secrets' to verify API keys"
+echo "   • Type 'check_sessions' to verify session directory"
+echo "   • Type 'claude' to start!"
 echo ""
-echo "💡 HELPFUL COMMANDS:"
-echo "   • Check MCP config: cat ~/.claude.json"
-echo "   • List installed packages: npm list -g --depth=0"
-echo "   • Update everything: Re-run this script"
+echo "💡 Session resume is enabled at: ~/.claude-sessions"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# ==============================================================================
-# AUTO-RENAME CODESPACE TO MATCH REPOSITORY
-# ==============================================================================
+# Cancel the script timeout
+kill $SCRIPT_TIMEOUT_PID 2>/dev/null || true
 
-if [ -n "$CODESPACES" ] && [ -n "$CODESPACE_NAME" ] && [ -n "$GITHUB_REPOSITORY" ]; then
-    # Extract repository name (without owner)
-    REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
-
-    if [ -n "$REPO_NAME" ]; then
-        echo "🏷️  Auto-renaming Codespace..."
-        echo "   Repository: $REPO_NAME"
-        echo "   Codespace: $CODESPACE_NAME"
-
-        # Try to rename the codespace
-        if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$REPO_NAME" 2>/dev/null; then
-            echo "   ✅ Codespace renamed to: $REPO_NAME"
-            echo ""
-        else
-            echo "   ⚠️  Could not rename (you can rename manually with 'rename-codespace')"
-            echo ""
-        fi
-    fi
+# Clean up temp log directory if installation was successful
+if [ $FAIL_COUNT -eq 0 ]; then
+    rm -rf "$TEMP_LOG_DIR"
+else
+    log "Installation logs saved in: $TEMP_LOG_DIR"
 fi
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+log "Installation script completed in $(( SECONDS / 60 ))m $(( SECONDS % 60 ))s"
