@@ -8,7 +8,7 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-brave-search"],
       "env": {
-        "BRAVE_API_KEY": "${Brave_api_key}"
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
       }
     },
     "fetch": {
@@ -28,11 +28,22 @@
     },
     "playwright": {
       "command": "npx",
-      "args": ["@playwright/mcp@latest"]
+      "args": ["-y", "@playwright/mcp"]
     },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "google-drive": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-gdrive"]
+    },
+    "huggingface": {
+      "command": "npx",
+      "args": ["-y", "@huggingface/mcp-server-huggingface"],
+      "env": {
+        "HUGGINGFACE_API_KEY": "${HUGGINGFACE_API_KEY}"
+      }
     }
   }
 }

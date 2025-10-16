@@ -141,6 +141,32 @@ else
     echo "    ❌ Failed"
 fi
 
+# 8. Google Drive
+echo ""
+echo "8️⃣  Installing google-drive..."
+npm install -g @modelcontextprotocol/server-gdrive@latest --force 2>&1 | grep -v "npm WARN" | tail -2
+if npm list -g @modelcontextprotocol/server-gdrive &> /dev/null; then
+    GDRIVE_VERSION=$(npm list -g @modelcontextprotocol/server-gdrive 2>&1 | grep server-gdrive | awk '{print $2}')
+    echo "    ✅ google-drive installed"
+    echo "    📌 Version: $GDRIVE_VERSION"
+    echo "    💡 Use: Access Google Drive files and folders"
+else
+    echo "    ❌ Failed"
+fi
+
+# 9. Hugging Face
+echo ""
+echo "9️⃣  Installing huggingface..."
+npm install -g @huggingface/mcp-server-huggingface@latest --force 2>&1 | grep -v "npm WARN" | tail -2
+if npm list -g @huggingface/mcp-server-huggingface &> /dev/null; then
+    HF_VERSION=$(npm list -g @huggingface/mcp-server-huggingface 2>&1 | grep mcp-server-huggingface | awk '{print $2}')
+    echo "    ✅ huggingface installed"
+    echo "    📌 Version: $HF_VERSION"
+    echo "    💡 Use: Access Hugging Face models & datasets"
+else
+    echo "    ❌ Failed"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
@@ -200,6 +226,8 @@ declare -a MCP_SERVERS=(
     "@modelcontextprotocol/server-filesystem"
     "@playwright/mcp"
     "@modelcontextprotocol/server-sequential-thinking"
+    "@modelcontextprotocol/server-gdrive"
+    "@huggingface/mcp-server-huggingface"
 )
 
 MCP_PASS=0
@@ -244,13 +272,13 @@ if [ -f "$HOME/.claude.json" ]; then
     echo ""
     echo "   Configured servers:"
     grep -B1 "\"command\"" "$HOME/.claude.json" 2>/dev/null | grep "\"" | sed 's/.*"\([^"]*\)".*/      • \1/' | grep -v "command" | grep -v "^--$" || echo "      (parsing issue)"
-    if [ "$MCP_CONFIGURED" -ge 7 ]; then
+    if [ "$MCP_CONFIGURED" -ge 9 ]; then
         echo ""
         echo "   ✅ ALL EXPECTED SERVERS CONFIGURED"
         ((PASS_COUNT++))
     else
         echo ""
-        echo "   ⚠️  FEWER SERVERS THAN EXPECTED (expected 7, found $MCP_CONFIGURED)"
+        echo "   ⚠️  FEWER SERVERS THAN EXPECTED (expected 9, found $MCP_CONFIGURED)"
         ((WARN_COUNT++))
     fi
 else
@@ -288,6 +316,7 @@ declare -a KEY_VARS=(
     "ANTHROPIC_API_KEY:Claude API"
     "GITHUB_ACCESS_TOKEN:GitHub"
     "GOOGLE_GEMINI_API_KEY:Google Gemini"
+    "HUGGINGFACE_API_KEY:Hugging Face"
 )
 
 ENV_PASS=0
