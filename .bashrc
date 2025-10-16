@@ -17,7 +17,7 @@ auto_update_tools() {
         fi
     fi
     
-    echo "🔄 Checking for updates to Claude Code and SuperClaude..."
+    echo "🔄 Checking for updates to Claude Code, SuperClaude, and MCP servers..."
     
     # Update Claude Code
     npm update -g @anthropic-ai/claude-code &>/dev/null &
@@ -28,6 +28,15 @@ auto_update_tools() {
     else
         pip install --break-system-packages --user SuperClaude --upgrade &>/dev/null &
     fi
+    
+    # Update MCP servers
+    npm update -g mcp-installer &>/dev/null &
+    npm update -g @modelcontextprotocol/server-brave-search &>/dev/null &
+    npm update -g @modelcontextprotocol/server-github &>/dev/null &
+    npm update -g @modelcontextprotocol/server-filesystem &>/dev/null &
+    npm update -g @playwright/mcp &>/dev/null &
+    npm update -g @modelcontextprotocol/server-sequential-thinking &>/dev/null &
+    pip install --break-system-packages --user mcp-server-fetch --upgrade &>/dev/null &
     
     # Mark as updated today
     echo "$current_date" > "$update_marker"
