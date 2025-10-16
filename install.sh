@@ -375,3 +375,32 @@ echo "   • Check MCP config: cat ~/.claude.json"
 echo "   • List installed packages: npm list -g --depth=0"
 echo "   • Update everything: Re-run this script"
 echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ==============================================================================
+# AUTO-RENAME CODESPACE TO MATCH REPOSITORY
+# ==============================================================================
+
+if [ -n "$CODESPACES" ] && [ -n "$CODESPACE_NAME" ] && [ -n "$GITHUB_REPOSITORY" ]; then
+    # Extract repository name (without owner)
+    REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
+
+    if [ -n "$REPO_NAME" ]; then
+        echo "🏷️  Auto-renaming Codespace..."
+        echo "   Repository: $REPO_NAME"
+        echo "   Codespace: $CODESPACE_NAME"
+
+        # Try to rename the codespace
+        if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$REPO_NAME" 2>/dev/null; then
+            echo "   ✅ Codespace renamed to: $REPO_NAME"
+            echo ""
+        else
+            echo "   ⚠️  Could not rename (you can rename manually with 'rename-codespace')"
+            echo ""
+        fi
+    fi
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""

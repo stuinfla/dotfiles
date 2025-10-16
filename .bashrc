@@ -159,18 +159,57 @@ check_versions() {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
+# Rename Codespace to match repository name
+rename-codespace() {
+    if [ -z "$CODESPACES" ]; then
+        echo "❌ Not running in a Codespace"
+        return 1
+    fi
+
+    local repo_name=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
+
+    if [ -z "$repo_name" ]; then
+        echo "❌ Could not detect repository name"
+        return 1
+    fi
+
+    if [ -z "$CODESPACE_NAME" ]; then
+        echo "❌ Could not detect Codespace name"
+        return 1
+    fi
+
+    echo "🏷️  Renaming Codespace..."
+    echo "   From: $CODESPACE_NAME"
+    echo "   To: $repo_name"
+
+    if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$repo_name" 2>/dev/null; then
+        echo "   ✅ Successfully renamed to: $repo_name"
+    else
+        echo "   ❌ Rename failed. Make sure gh CLI is authenticated."
+        return 1
+    fi
+}
+
 # Welcome message (only in Codespaces)
 if [ -n "$CODESPACES" ]; then
     echo ""
     echo "🚀 Codespace Ready!"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    # Show repository and codespace info
+    if [ -n "$GITHUB_REPOSITORY" ]; then
+        REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
+        echo "📁 Repository: $REPO_NAME"
+    fi
+
     echo "✅ Claude Code installed (type 'claude' to start)"
     echo "✅ SuperClaude installed (use /sc: commands)"
     echo "✅ MCP servers configured"
     echo ""
     echo "💡 Helpful commands:"
-    echo "   • check_secrets  - Verify API keys are loaded"
-    echo "   • check_versions - Show installed versions"
+    echo "   • check_secrets     - Verify API keys are loaded"
+    echo "   • check_versions    - Show installed versions"
+    echo "   • rename-codespace  - Rename to match repository"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 fi
