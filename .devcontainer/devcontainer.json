@@ -2,6 +2,13 @@
   "name": "AI Development Environment",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
 
+  // Request largest available machine (4-core, 16GB RAM)
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+
   // Configure VS Code settings
   "customizations": {
     "vscode": {
