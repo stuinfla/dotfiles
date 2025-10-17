@@ -327,4 +327,42 @@ else
     log "Installation logs saved in: $TEMP_LOG_DIR"
 fi
 
+# ═══════════════════════════════════════════════════════════════════
+# AUTO-SETUP DEVCONTAINER (if missing)
+# ═══════════════════════════════════════════════════════════════════
+
+# Detect if we're in a Codespace and find workspace directory
+if [ -d "/workspaces" ]; then
+    WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -type d ! -path /workspaces -print -quit 2>/dev/null)
+
+    if [ -n "$WORKSPACE_DIR" ] && [ -d "$WORKSPACE_DIR" ]; then
+        log "📁 Checking devcontainer configuration..."
+
+        # Check if .devcontainer already exists
+        if [ ! -d "$WORKSPACE_DIR/.devcontainer" ]; then
+            warn "No .devcontainer found in repository"
+
+            # Check if template exists in dotfiles
+            if [ -d "$(dirname "$0")/.devcontainer" ]; then
+                log "Copying .devcontainer template from dotfiles..."
+                cp -r "$(dirname "$0")/.devcontainer" "$WORKSPACE_DIR/.devcontainer"
+                success ".devcontainer created in repository"
+
+                echo ""
+                warn "⚠️  IMPORTANT: Rebuild this Codespace to apply changes!"
+                echo "   1. Click 'Codespaces' menu (bottom-left)"
+                echo "   2. Select 'Rebuild Container'"
+                echo "   This will:"
+                echo "   • Switch to 4-core machine (from 2-core)"
+                echo "   • Configure VS Code terminal properly"
+                echo ""
+            else
+                warn ".devcontainer template not found in dotfiles"
+            fi
+        else
+            success ".devcontainer already exists in repository"
+        fi
+    fi
+fi
+
 log "Installation script completed in $(( SECONDS / 60 ))m $(( SECONDS % 60 ))s"
