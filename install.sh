@@ -97,6 +97,27 @@ if [ -f "$(dirname "$0")/.bash_profile" ]; then
     success "Copied .bash_profile"
 fi
 
+# Append Claude configuration to .bashrc (don't replace, append!)
+# This ensures our custom functions load in Codespaces
+if [ -f "$(dirname "$0")/.bashrc-claude" ]; then
+    # Copy the Claude bashrc additions to home
+    cp "$(dirname "$0")/.bashrc-claude" ~/.bashrc-claude
+
+    # Check if already added (idempotent)
+    if ! grep -q ".bashrc-claude" ~/.bashrc 2>/dev/null; then
+        echo "" >> ~/.bashrc
+        echo "# Load Claude Code configuration from dotfiles" >> ~/.bashrc
+        echo "if [ -f ~/.bashrc-claude ]; then" >> ~/.bashrc
+        echo "    source ~/.bashrc-claude" >> ~/.bashrc
+        echo "fi" >> ~/.bashrc
+        success "Added Claude configuration to .bashrc"
+    else
+        success "Claude configuration already in .bashrc"
+    fi
+else
+    warn ".bashrc-claude not found in dotfiles"
+fi
+
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════
@@ -121,20 +142,35 @@ fi
 
 echo ""
 
-# Install SuperClaude (with timeout)
+# Install SuperClaude (with timeout and proper error handling)
 log "2/2 Installing SuperClaude..."
+SUPERCLAUDE_INSTALLED=false
+
 if command -v pipx &> /dev/null; then
-    timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force 2>&1 | tail -2
-    timeout $PACKAGE_TIMEOUT pipx upgrade SuperClaude 2>&1 | tail -2
+    if timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force 2>&1 | tail -2; then
+        SUPERCLAUDE_INSTALLED=true
+    elif timeout $PACKAGE_TIMEOUT pipx upgrade SuperClaude 2>&1 | tail -2; then
+        SUPERCLAUDE_INSTALLED=true
+    fi
 else
-    timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude 2>&1 | grep -v "Requirement already satisfied" | tail -3
+    if timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude 2>&1 | tail -3; then
+        SUPERCLAUDE_INSTALLED=true
+    fi
 fi
 
-if command -v SuperClaude &> /dev/null || python3 -m SuperClaude --version &> /dev/null 2>&1; then
+if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     SUPERCLAUDE_VERSION=$(python3 -m SuperClaude --version 2>&1 | head -1 || echo "installed")
     success "SuperClaude installed: $SUPERCLAUDE_VERSION"
+
+    # Run SuperClaude install to set up framework
+    log "Running SuperClaude setup..."
+    if python3 -m SuperClaude install 2>&1 | tail -5; then
+        success "SuperClaude framework installed"
+    else
+        warn "SuperClaude framework setup had issues"
+    fi
 else
-    warn "SuperClaude installation had issues (not critical)"
+    warn "SuperClaude installation failed (not critical)"
 fi
 
 echo ""

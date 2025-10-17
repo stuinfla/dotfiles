@@ -1,0 +1,75 @@
+# ═══════════════════════════════════════════════════════════════════
+# CLAUDE CODE & SUPERCLAUDE CONFIGURATION
+# Auto-loaded by GitHub Codespaces dotfiles
+# ═══════════════════════════════════════════════════════════════════
+
+# Ensure PATH includes npm global packages and local bin
+export PATH="$HOME/.npm-global/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+
+# SESSION RESUME SUPPORT
+export CLAUDE_SESSION_DIR="$HOME/.claude-sessions"
+mkdir -p "$CLAUDE_SESSION_DIR"
+
+# Claude Code function - runs with --dangerously-skip-permissions
+claude() {
+    command claude --dangerously-skip-permissions --session-dir "$CLAUDE_SESSION_DIR" "$@"
+}
+export -f claude
+
+# Quick command to check if secrets are loaded
+check_secrets() {
+    echo "Checking GitHub Codespaces Secrets..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    declare -a SECRETS=(
+        "ANTHROPIC_API_KEY"
+        "CLAUDE_API_KEY"
+        "BRAVE_API_KEY"
+        "GITHUB_ACCESS_TOKEN"
+        "HUGGINGFACE_API_KEY"
+    )
+
+    for secret in "${SECRETS[@]}"; do
+        if [ -n "${!secret}" ]; then
+            echo "✅ $secret is set"
+        else
+            echo "❌ $secret is NOT set"
+        fi
+    done
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "To add secrets: https://github.com/settings/codespaces"
+}
+
+# Quick command to check installed versions
+check_versions() {
+    echo "Installed Tool Versions:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Claude Code: $(claude --version 2>/dev/null || echo 'Not installed')"
+    echo "SuperClaude: $(python3 -m SuperClaude --version 2>/dev/null || echo 'Not installed')"
+    echo "Node.js: $(node --version 2>/dev/null || echo 'Not installed')"
+    echo "Python: $(python3 --version 2>/dev/null || echo 'Not installed')"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+# Welcome message (only in Codespaces, only once per session)
+if [ -n "$CODESPACES" ] && [ -z "$CLAUDE_WELCOME_SHOWN" ]; then
+    export CLAUDE_WELCOME_SHOWN=1
+    echo ""
+    echo "🚀 Claude Development Environment Ready!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    if [ -n "$GITHUB_REPOSITORY" ]; then
+        REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
+        echo "📁 Repository: $REPO_NAME"
+    fi
+
+    echo ""
+    echo "💡 Quick commands:"
+    echo "   • claude              - Start Claude Code (with skip-permissions enabled)"
+    echo "   • check_secrets       - Verify API keys"
+    echo "   • check_versions      - Show installed versions"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+fi
