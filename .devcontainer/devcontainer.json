@@ -2,12 +2,12 @@
   "name": "AI Development Environment",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
 
-  // Request 8-core machine (will fallback to 4-core if not available, NEVER 2-core)
-  // Updated: 2025-10-16 - Prioritize larger machines for better performance
+  // Request 4-core machine minimum (NEVER 2-core)
+  // Updated: 2025-10-16 - Ensure minimum 4-core for performance
   "hostRequirements": {
-    "cpus": 8,
-    "memory": "32gb",
-    "storage": "64gb"
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
   },
 
   // Configure VS Code settings
@@ -98,12 +98,16 @@
   "forwardPorts": [3000, 5000, 8000, 8080],
 
   // Commands to run after the container is created
-  "postCreateCommand": "echo 'Codespace container ready! Dotfiles already installed by GitHub.'",
+  "postCreateCommand": "echo 'Codespace container ready!'",
 
   // Environment variables (secrets are automatically injected by GitHub Codespaces)
   "remoteEnv": {
     "CODESPACES": "true"
   },
+
+  // Use 'onCreateCommand' to run install script with timeout protection
+  // NEW: Added timeout wrapper (15 minutes max) to prevent hangs
+  "onCreateCommand": "timeout 900 bash ~/.dotfiles/install.sh || (echo 'Installation timed out or failed. Check logs above.' && exit 1)",
 
   // Mount configuration
   "mounts": [

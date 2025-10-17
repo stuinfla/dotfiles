@@ -82,12 +82,12 @@ auto_update_tools() {
         echo "Updating Claude Code..." >> "$update_log"
         timeout $timeout_seconds npm update -g @anthropic-ai/claude-code@latest --force >> "$update_log" 2>&1 || echo "Claude Code update timed out or failed" >> "$update_log"
 
-        # Update SuperClaude Framework (with timeout)
-        echo "Updating SuperClaude Framework from GitHub..." >> "$update_log"
+        # Update SuperClaude (with timeout)
+        echo "Updating SuperClaude..." >> "$update_log"
         if command -v pipx &> /dev/null; then
-            timeout $timeout_seconds pipx install --force git+https://github.com/SuperClaude-Org/SuperClaude_Framework.git >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
+            timeout $timeout_seconds pipx upgrade SuperClaude >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
         else
-            timeout $timeout_seconds pip install --break-system-packages --user --upgrade --force-reinstall git+https://github.com/SuperClaude-Org/SuperClaude_Framework.git >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
+            timeout $timeout_seconds pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
         fi
 
         # Update MCP servers (with timeout for each)

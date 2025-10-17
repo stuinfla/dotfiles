@@ -97,12 +97,6 @@ if [ -f "$(dirname "$0")/.bash_profile" ]; then
     success "Copied .bash_profile"
 fi
 
-# Copy .bashrc if it exists
-if [ -f "$(dirname "$0")/.bashrc" ]; then
-    cp "$(dirname "$0")/.bashrc" ~/.bashrc
-    success "Copied .bashrc"
-fi
-
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════
@@ -128,11 +122,12 @@ fi
 echo ""
 
 # Install SuperClaude (with timeout)
-log "2/2 Installing SuperClaude Framework from GitHub..."
+log "2/2 Installing SuperClaude..."
 if command -v pipx &> /dev/null; then
-    timeout $PACKAGE_TIMEOUT pipx install --force git+https://github.com/SuperClaude-Org/SuperClaude_Framework.git 2>&1 | tail -2
+    timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force 2>&1 | tail -2
+    timeout $PACKAGE_TIMEOUT pipx upgrade SuperClaude 2>&1 | tail -2
 else
-    timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall git+https://github.com/SuperClaude-Org/SuperClaude_Framework.git 2>&1 | grep -v "Requirement already satisfied" | tail -3
+    timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude 2>&1 | grep -v "Requirement already satisfied" | tail -3
 fi
 
 if command -v SuperClaude &> /dev/null || python3 -m SuperClaude --version &> /dev/null 2>&1; then
@@ -284,6 +279,26 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════
+# STEP 5: AUTO-RENAME CODESPACE TO MATCH REPOSITORY
+# ═══════════════════════════════════════════════════════════════════
+
+if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME" ]; then
+    log "🏷️  Auto-renaming Codespace to match repository..."
+
+    REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
+
+    if [ -n "$REPO_NAME" ]; then
+        if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$REPO_NAME" 2>&1 | tail -2; then
+            success "Codespace renamed to: $REPO_NAME"
+        else
+            warn "Could not auto-rename codespace (not critical, you can run 'rename-codespace' manually)"
+        fi
+    fi
+fi
+
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════
 # FINAL SUMMARY
 # ═══════════════════════════════════════════════════════════════════
 
@@ -324,56 +339,6 @@ if [ $FAIL_COUNT -eq 0 ]; then
     rm -rf "$TEMP_LOG_DIR"
 else
     log "Installation logs saved in: $TEMP_LOG_DIR"
-fi
-
-# ═══════════════════════════════════════════════════════════════════
-# AUTO-RENAME CODESPACE & SETUP DEVCONTAINER
-# ═══════════════════════════════════════════════════════════════════
-
-# Detect if we're in a Codespace and find workspace directory
-if [ -d "/workspaces" ]; then
-    WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -type d ! -path /workspaces -print -quit 2>/dev/null)
-
-    if [ -n "$WORKSPACE_DIR" ] && [ -d "$WORKSPACE_DIR" ]; then
-        REPO_NAME=$(basename "$WORKSPACE_DIR")
-
-        # Auto-rename Codespace to match repository name
-        if [ -n "$CODESPACE_NAME" ] && command -v gh &> /dev/null; then
-            log "📝 Renaming Codespace to match repository..."
-            if gh codespace edit -c "$CODESPACE_NAME" -d "$REPO_NAME" 2>/dev/null; then
-                success "Codespace renamed to: $REPO_NAME"
-            else
-                warn "Could not auto-rename Codespace (not critical)"
-            fi
-        fi
-
-        log "📁 Checking devcontainer configuration..."
-
-        # Check if .devcontainer already exists
-        if [ ! -d "$WORKSPACE_DIR/.devcontainer" ]; then
-            warn "No .devcontainer found in repository"
-
-            # Check if template exists in dotfiles
-            if [ -d "$(dirname "$0")/.devcontainer" ]; then
-                log "Copying .devcontainer template from dotfiles..."
-                cp -r "$(dirname "$0")/.devcontainer" "$WORKSPACE_DIR/.devcontainer"
-                success ".devcontainer created in repository"
-
-                echo ""
-                warn "⚠️  IMPORTANT: Rebuild this Codespace to apply changes!"
-                echo "   1. Click 'Codespaces' menu (bottom-left)"
-                echo "   2. Select 'Rebuild Container'"
-                echo "   This will:"
-                echo "   • Switch to 4-core machine (from 2-core)"
-                echo "   • Configure VS Code terminal properly"
-                echo ""
-            else
-                warn ".devcontainer template not found in dotfiles"
-            fi
-        else
-            success ".devcontainer already exists in repository"
-        fi
-    fi
 fi
 
 log "Installation script completed in $(( SECONDS / 60 ))m $(( SECONDS % 60 ))s"
