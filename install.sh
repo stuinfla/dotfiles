@@ -97,6 +97,12 @@ if [ -f "$(dirname "$0")/.bash_profile" ]; then
     success "Copied .bash_profile"
 fi
 
+# Copy .bashrc if it exists
+if [ -f "$(dirname "$0")/.bashrc" ]; then
+    cp "$(dirname "$0")/.bashrc" ~/.bashrc
+    success "Copied .bashrc"
+fi
+
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════
