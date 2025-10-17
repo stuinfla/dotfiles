@@ -97,17 +97,14 @@
   // Ports to forward automatically
   "forwardPorts": [3000, 5000, 8000, 8080],
 
-  // Commands to run after the container is created
-  "postCreateCommand": "echo 'Codespace container ready!'",
-
   // Environment variables (secrets are automatically injected by GitHub Codespaces)
   "remoteEnv": {
     "CODESPACES": "true"
   },
 
-  // Use 'onCreateCommand' to run install script with timeout protection
-  // NEW: Added timeout wrapper (15 minutes max) to prevent hangs
-  "onCreateCommand": "timeout 900 bash ~/.dotfiles/install.sh || (echo 'Installation timed out or failed. Check logs above.' && exit 1)",
+  // Run install script AFTER features are installed (Node.js, Python, GitHub CLI)
+  // CRITICAL: postCreateCommand runs AFTER features, onCreateCommand runs BEFORE
+  "postCreateCommand": "timeout 900 bash ~/.dotfiles/install.sh || (echo 'Installation timed out or failed. Check logs above.' && exit 1)",
 
   // Mount configuration
   "mounts": [
