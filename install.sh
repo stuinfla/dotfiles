@@ -328,7 +328,7 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# AUTO-SETUP DEVCONTAINER (if missing)
+# AUTO-RENAME CODESPACE & SETUP DEVCONTAINER
 # ═══════════════════════════════════════════════════════════════════
 
 # Detect if we're in a Codespace and find workspace directory
@@ -336,6 +336,18 @@ if [ -d "/workspaces" ]; then
     WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -type d ! -path /workspaces -print -quit 2>/dev/null)
 
     if [ -n "$WORKSPACE_DIR" ] && [ -d "$WORKSPACE_DIR" ]; then
+        REPO_NAME=$(basename "$WORKSPACE_DIR")
+
+        # Auto-rename Codespace to match repository name
+        if [ -n "$CODESPACE_NAME" ] && command -v gh &> /dev/null; then
+            log "📝 Renaming Codespace to match repository..."
+            if gh codespace edit -c "$CODESPACE_NAME" -d "$REPO_NAME" 2>/dev/null; then
+                success "Codespace renamed to: $REPO_NAME"
+            else
+                warn "Could not auto-rename Codespace (not critical)"
+            fi
+        fi
+
         log "📁 Checking devcontainer configuration..."
 
         # Check if .devcontainer already exists
