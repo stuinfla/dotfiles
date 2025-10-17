@@ -128,12 +128,11 @@ fi
 echo ""
 
 # Install SuperClaude (with timeout)
-log "2/2 Installing SuperClaude..."
+log "2/2 Installing SuperClaude Framework from GitHub..."
 if command -v pipx &> /dev/null; then
-    timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force 2>&1 | tail -2
-    timeout $PACKAGE_TIMEOUT pipx upgrade SuperClaude 2>&1 | tail -2
+    timeout $PACKAGE_TIMEOUT pipx install --force git+https://github.com/SuperClaude-Org/SuperClaude_Framework.git 2>&1 | tail -2
 else
-    timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude 2>&1 | grep -v "Requirement already satisfied" | tail -3
+    timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall git+https://github.com/SuperClaude-Org/SuperClaude_Framework.git 2>&1 | grep -v "Requirement already satisfied" | tail -3
 fi
 
 if command -v SuperClaude &> /dev/null || python3 -m SuperClaude --version &> /dev/null 2>&1; then
