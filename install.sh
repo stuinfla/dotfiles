@@ -128,7 +128,7 @@ log "📦 Installing core tools..."
 echo ""
 
 # Install Claude Code (with timeout)
-log "1/2 Installing Claude Code..."
+log "1/3 Installing Claude Code..."
 if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --force 2>&1 | grep -v "npm WARN" | tail -3; then
     if command -v claude &> /dev/null; then
         CLAUDE_VERSION=$(claude --version 2>&1 | head -1 || echo "unknown")
@@ -142,10 +142,24 @@ fi
 
 echo ""
 
-# Install SuperClaude (with timeout and proper error handling)
-log "2/2 Installing SuperClaude..."
-SUPERCLAUDE_INSTALLED=false
+# Install Claude Flow (with timeout)
+log "2/3 Installing Claude Flow..."
+if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@latest --force 2>&1 | grep -v "npm WARN" | tail -3; then
+    if command -v claude-flow &> /dev/null; then
+        FLOW_VERSION=$(claude-flow --version 2>&1 | head -1 || echo "unknown")
+        success "Claude Flow installed: $FLOW_VERSION"
+    else
+        warn "Claude Flow installed but command not found in PATH"
+    fi
+else
+    warn "Claude Flow installation failed (not critical)"
+fi
 
+echo ""
+
+# Install SuperClaude (with timeout and proper error handling)
+log "3/3 Installing SuperClaude..."
+SUPERCLAUDE_INSTALLED=false
 if command -v pipx &> /dev/null; then
     if timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force 2>&1 | tail -2; then
         SUPERCLAUDE_INSTALLED=true
