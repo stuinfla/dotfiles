@@ -16,12 +16,22 @@ export PATH="$HOME/.local/bin:$PATH"
 export CLAUDE_SESSION_DIR="$HOME/.claude-sessions"
 mkdir -p "$CLAUDE_SESSION_DIR"
 
+# Remove any existing claude alias to ensure our function takes precedence
+unalias claude 2>/dev/null || true
+unalias dsp 2>/dev/null || true
+unalias DSP 2>/dev/null || true
+
 # Claude Code function - runs with --dangerously-skip-permissions AND session support
 # Using a function instead of alias for better reliability
 claude() {
     command claude --dangerously-skip-permissions --session-dir "$CLAUDE_SESSION_DIR" "$@"
 }
 export -f claude
+
+# Convenience aliases for dangerously-skip-permissions mode
+# Both 'dsp' and 'DSP' work the same way
+alias dsp='claude'
+alias DSP='claude'
 
 # ═══════════════════════════════════════════════════════════════════
 # ENVIRONMENT VARIABLES & API KEYS
@@ -89,6 +99,10 @@ auto_update_tools() {
         else
             timeout $timeout_seconds pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
         fi
+
+        # Update Claude Flow @alpha (with timeout)
+        echo "Updating Claude Flow @alpha..." >> "$update_log"
+        timeout $timeout_seconds npx claude-flow@alpha init --force >> "$update_log" 2>&1 || echo "Claude Flow update timed out or failed" >> "$update_log"
 
         # Update MCP servers (with timeout for each)
         echo "Updating MCP servers..." >> "$update_log"

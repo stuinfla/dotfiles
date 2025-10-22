@@ -23,6 +23,10 @@
   // Common ports
   "forwardPorts": [3000, 5000, 8000, 8080],
 
+  // Run install script if using dotfiles
+  // Use $DOTFILES environment variable (set by GitHub Codespaces) for correct path
+  "postCreateCommand": "bash -c 'if [ -n \"$DOTFILES\" ] && [ -f \"$DOTFILES/install.sh\" ]; then timeout 900 bash \"$DOTFILES/install.sh\"; else echo \"No dotfiles found, skipping installation\"; fi'",
+
   // Set user
   "remoteUser": "codespace"
 }

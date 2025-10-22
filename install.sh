@@ -69,6 +69,44 @@ trap cleanup EXIT INT TERM
 SCRIPT_TIMEOUT_PID=$!
 
 # ═══════════════════════════════════════════════════════════════════
+# DOTFILES DIRECTORY DETECTION
+# ═══════════════════════════════════════════════════════════════════
+
+# Detect dotfiles location (GitHub Codespaces sets $DOTFILES env var)
+if [ -n "${DOTFILES:-}" ]; then
+    DOTFILES_DIR="$DOTFILES"
+    log "Using Codespaces dotfiles directory: $DOTFILES_DIR"
+elif [ -d "$HOME/.dotfiles" ]; then
+    DOTFILES_DIR="$HOME/.dotfiles"
+    log "Using dotfiles directory: $DOTFILES_DIR"
+else
+    # Fallback: use script's directory
+    DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
+    log "Using script directory as dotfiles: $DOTFILES_DIR"
+fi
+
+# Validate critical files exist
+log "Validating dotfiles directory..."
+VALIDATION_FAILED=false
+
+for file in .claude.json .bashrc; do
+    if [ ! -f "$DOTFILES_DIR/$file" ]; then
+        error "CRITICAL: $file not found in $DOTFILES_DIR"
+        VALIDATION_FAILED=true
+    fi
+done
+
+if [ "$VALIDATION_FAILED" = true ]; then
+    error "Dotfiles validation failed!"
+    error "Directory contents:"
+    ls -la "$DOTFILES_DIR" 2>&1 || echo "Cannot list directory"
+    exit 1
+fi
+
+success "Dotfiles directory validated: $DOTFILES_DIR"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════
 # START INSTALLATION
 # ═══════════════════════════════════════════════════════════════════
 
@@ -83,39 +121,20 @@ echo ""
 log "📋 Copying configuration files..."
 
 # Copy .claude.json to home directory FIRST (critical for MCP servers)
-if [ -f "$(dirname "$0")/.claude.json" ]; then
-    cp "$(dirname "$0")/.claude.json" ~/.claude.json
-    chmod 600 ~/.claude.json  # Security: Only owner can read
-    success "Copied .claude.json to home directory (permissions: 600)"
+cp "$DOTFILES_DIR/.claude.json" ~/.claude.json
+chmod 600 ~/.claude.json  # Security: Only owner can read
+success "Copied .claude.json to home directory (permissions: 600)"
+
+# Note: .bashrc and .bash_profile are automatically copied by GitHub Codespaces
+# from the dotfiles repository. No manual copying needed!
+if [ -f "$HOME/.bashrc" ]; then
+    success "Shell configuration (.bashrc) loaded by Codespaces"
 else
-    warn ".claude.json not found in dotfiles"
+    warn ".bashrc not found (GitHub Codespaces should have copied it)"
 fi
 
-# Copy .bash_profile if it exists
-if [ -f "$(dirname "$0")/.bash_profile" ]; then
-    cp "$(dirname "$0")/.bash_profile" ~/.bash_profile
-    success "Copied .bash_profile"
-fi
-
-# Append Claude configuration to .bashrc (don't replace, append!)
-# This ensures our custom functions load in Codespaces
-if [ -f "$(dirname "$0")/.bashrc-claude" ]; then
-    # Copy the Claude bashrc additions to home
-    cp "$(dirname "$0")/.bashrc-claude" ~/.bashrc-claude
-
-    # Check if already added (idempotent)
-    if ! grep -q ".bashrc-claude" ~/.bashrc 2>/dev/null; then
-        echo "" >> ~/.bashrc
-        echo "# Load Claude Code configuration from dotfiles" >> ~/.bashrc
-        echo "if [ -f ~/.bashrc-claude ]; then" >> ~/.bashrc
-        echo "    source ~/.bashrc-claude" >> ~/.bashrc
-        echo "fi" >> ~/.bashrc
-        success "Added Claude configuration to .bashrc"
-    else
-        success "Claude configuration already in .bashrc"
-    fi
-else
-    warn ".bashrc-claude not found in dotfiles"
+if [ -f "$HOME/.bash_profile" ]; then
+    success "Bash profile (.bash_profile) loaded by Codespaces"
 fi
 
 echo ""
@@ -142,23 +161,8 @@ fi
 
 echo ""
 
-# Install Claude Flow (with timeout)
-log "2/3 Installing Claude Flow..."
-if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@latest --force 2>&1 | grep -v "npm WARN" | tail -3; then
-    if command -v claude-flow &> /dev/null; then
-        FLOW_VERSION=$(claude-flow --version 2>&1 | head -1 || echo "unknown")
-        success "Claude Flow installed: $FLOW_VERSION"
-    else
-        warn "Claude Flow installed but command not found in PATH"
-    fi
-else
-    warn "Claude Flow installation failed (not critical)"
-fi
-
-echo ""
-
 # Install SuperClaude (with timeout and proper error handling)
-log "3/3 Installing SuperClaude..."
+log "2/3 Installing SuperClaude..."
 SUPERCLAUDE_INSTALLED=false
 if command -v pipx &> /dev/null; then
     if timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force 2>&1 | tail -2; then
@@ -185,6 +189,16 @@ if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     fi
 else
     warn "SuperClaude installation failed (not critical)"
+fi
+
+echo ""
+
+# Install Claude Flow @alpha (with timeout)
+log "3/3 Installing Claude Flow @alpha..."
+if timeout $PACKAGE_TIMEOUT npx claude-flow@alpha init --force 2>&1 | tail -3; then
+    success "Claude Flow @alpha installed and initialized"
+else
+    warn "Claude Flow installation had issues (not critical)"
 fi
 
 echo ""
@@ -260,12 +274,27 @@ PID_8=$!
 install_npm_package "@huggingface/mcp-server-huggingface" "huggingface" &
 PID_9=$!
 
-# Wait for all installations to complete
+# Wait for all installations to complete and track failures
 log "Waiting for installations to complete..."
-wait $PID_1 $PID_2 $PID_3 $PID_4 $PID_5 $PID_6 $PID_7 $PID_8 $PID_9 2>/dev/null || true
+FAILED_INSTALLS=0
+TOTAL_INSTALLS=9
+
+for pid in $PID_1 $PID_2 $PID_3 $PID_4 $PID_5 $PID_6 $PID_7 $PID_8 $PID_9; do
+    if ! wait $pid 2>/dev/null; then
+        ((FAILED_INSTALLS++))
+    fi
+done
 
 echo ""
-log "Parallel installation complete!"
+if [ $FAILED_INSTALLS -eq 0 ]; then
+    success "All $TOTAL_INSTALLS MCP packages installed successfully!"
+elif [ $FAILED_INSTALLS -le 3 ]; then
+    warn "$FAILED_INSTALLS/$TOTAL_INSTALLS installations failed (acceptable threshold)"
+else
+    error "$FAILED_INSTALLS/$TOTAL_INSTALLS installations failed (too many failures)"
+    error "Check logs in: $TEMP_LOG_DIR"
+    error "Continuing with verification to assess impact..."
+fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
