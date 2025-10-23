@@ -216,12 +216,25 @@ fi
 
 echo ""
 
-# Install Claude Flow @alpha (with timeout)
+# Install Claude Flow @alpha (with timeout) - install globally first
 log "3/3 Installing Claude Flow @alpha..."
-if timeout $PACKAGE_TIMEOUT npx claude-flow@alpha init --force 2>&1 | tail -3; then
-    success "Claude Flow @alpha installed and initialized"
+if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force 2>&1 | grep -v "npm WARN" | tail -3; then
+    if command -v claude-flow &> /dev/null; then
+        CLAUDE_FLOW_VERSION=$(claude-flow --version 2>&1 | head -1 || echo "installed")
+        success "Claude Flow installed: $CLAUDE_FLOW_VERSION"
+
+        # Initialize Claude Flow configuration
+        log "Initializing Claude Flow configuration..."
+        if timeout $PACKAGE_TIMEOUT claude-flow init --force 2>&1 | tail -2; then
+            success "Claude Flow configuration initialized"
+        else
+            warn "Claude Flow init had issues (may need manual setup)"
+        fi
+    else
+        warn "Claude Flow installation completed but command not found"
+    fi
 else
-    warn "Claude Flow installation had issues (not critical)"
+    warn "Claude Flow installation failed (not critical)"
 fi
 
 echo ""
@@ -431,13 +444,19 @@ fi
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "🎯 NEXT STEPS:"
-echo "   • Type 'dsp --version' to verify DSP alias works"
-echo "   • Type 'check_secrets' to verify API keys"
-echo "   • Type 'check_sessions' to verify session directory"
-echo "   • Type 'dsp' or 'claude' to start!"
+echo "🎯 IMPORTANT - TO ACTIVATE DSP ALIAS:"
 echo ""
-echo "💡 Session resume is enabled at: ~/.claude-sessions"
+echo "   ⚡ RESTART YOUR TERMINAL or run:"
+echo "      source ~/.bashrc"
+echo ""
+echo "   Then you can use:"
+echo "   • dsp --version     - Verify DSP alias works"
+echo "   • dsp               - Start Claude Code"
+echo "   • check_secrets     - Verify API keys"
+echo "   • check_versions    - Show all installed tools"
+echo "   • check_sessions    - View Claude sessions"
+echo ""
+echo "💡 Session resume enabled at: ~/.claude-sessions"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
@@ -462,11 +481,15 @@ Files Installed:
 Tools Installed:
   • Claude Code @latest
   • SuperClaude (latest)
-  • Claude Flow @alpha
+  • Claude Flow @alpha (globally installed)
   • 9 MCP Servers (parallel installation)
 
-Quick Test Commands:
+⚡ IMPORTANT - TO ACTIVATE DSP ALIAS:
+  Restart your terminal or run: source ~/.bashrc
+
+Quick Test Commands (after restarting terminal):
   dsp --version       # Test DSP alias
+  dsp                 # Start Claude Code
   check_secrets       # Verify API keys
   check_versions      # Show installed versions
   check_sessions      # View Claude sessions
@@ -501,3 +524,14 @@ else
 fi
 
 log "Installation script completed in $(( SECONDS / 60 ))m $(( SECONDS % 60 ))s"
+
+# Exit with success if critical components are working
+# Critical: .bashrc, .claude.json, Claude Code
+# Optional: SuperClaude, some MCP servers
+if [ -f "$HOME/.bashrc" ] && [ -f "$HOME/.claude.json" ] && command -v claude &> /dev/null; then
+    log "✅ Critical components installed successfully - exiting with success code"
+    exit 0
+else
+    error "❌ Critical components missing - exiting with failure code"
+    exit 1
+fi
