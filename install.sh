@@ -4,7 +4,11 @@
 # Updated: 2025-10-16 - Parallel installation, timeouts, security fixes
 # ═══════════════════════════════════════════════════════════════════
 
-set -e  # Exit on error
+# NOTE: NOT using 'set -e' because we need custom error handling for:
+# - Background jobs that may fail
+# - Optional installations (SuperClaude, some MCP servers)
+# - grep commands that may not match
+# We explicitly check critical commands and exit at the end with proper code
 set -u  # Error on undefined variables
 
 # VERBOSE OUTPUT - Show what's happening
@@ -136,25 +140,37 @@ echo ""
 
 # Copy .bashrc FIRST (critical for shell aliases)
 if [ -f "$DOTFILES_DIR/.bashrc" ]; then
-    cp "$DOTFILES_DIR/.bashrc" ~/.bashrc
-    success "Copied .bashrc to home directory"
+    if cp "$DOTFILES_DIR/.bashrc" ~/.bashrc; then
+        success "Copied .bashrc to home directory"
+    else
+        error "CRITICAL: Failed to copy .bashrc"
+        exit 1
+    fi
 else
     error "CRITICAL: .bashrc not found in $DOTFILES_DIR"
+    exit 1
 fi
 
 # Copy .bash_profile (loads .bashrc on login)
 if [ -f "$DOTFILES_DIR/.bash_profile" ]; then
-    cp "$DOTFILES_DIR/.bash_profile" ~/.bash_profile
-    success "Copied .bash_profile to home directory"
+    if cp "$DOTFILES_DIR/.bash_profile" ~/.bash_profile; then
+        success "Copied .bash_profile to home directory"
+    else
+        warn "Failed to copy .bash_profile (not critical)"
+    fi
 fi
 
 # Copy .claude.json (critical for MCP servers)
 if [ -f "$DOTFILES_DIR/.claude.json" ]; then
-    cp "$DOTFILES_DIR/.claude.json" ~/.claude.json
-    chmod 600 ~/.claude.json  # Security: Only owner can read
-    success "Copied .claude.json to home directory (permissions: 600)"
+    if cp "$DOTFILES_DIR/.claude.json" ~/.claude.json && chmod 600 ~/.claude.json; then
+        success "Copied .claude.json to home directory (permissions: 600)"
+    else
+        error "CRITICAL: Failed to copy or chmod .claude.json"
+        exit 1
+    fi
 else
     error "CRITICAL: .claude.json not found in $DOTFILES_DIR"
+    exit 1
 fi
 
 echo ""
@@ -171,7 +187,7 @@ echo ""
 
 # Install Claude Code (with timeout)
 log "1/3 Installing Claude Code..."
-if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --force 2>&1 | grep -v "npm WARN" | tail -3; then
+if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --force 2>&1 | (grep -v "npm WARN" || true) | tail -3; then
     if command -v claude &> /dev/null; then
         CLAUDE_VERSION=$(claude --version 2>&1 | head -1 || echo "unknown")
         success "Claude Code installed: $CLAUDE_VERSION"
@@ -218,7 +234,7 @@ echo ""
 
 # Install Claude Flow @alpha (with timeout) - install globally first
 log "3/3 Installing Claude Flow @alpha..."
-if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force 2>&1 | grep -v "npm WARN" | tail -3; then
+if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force 2>&1 | (grep -v "npm WARN" || true) | tail -3; then
     if command -v claude-flow &> /dev/null; then
         CLAUDE_FLOW_VERSION=$(claude-flow --version 2>&1 | head -1 || echo "installed")
         success "Claude Flow installed: $CLAUDE_FLOW_VERSION"
