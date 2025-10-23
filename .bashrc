@@ -20,6 +20,8 @@ mkdir -p "$CLAUDE_SESSION_DIR"
 unalias claude 2>/dev/null || true
 unalias dsp 2>/dev/null || true
 unalias DSP 2>/dev/null || true
+unalias dsb 2>/dev/null || true
+unalias DSB 2>/dev/null || true
 
 # Claude Code function - runs with --dangerously-skip-permissions AND session support
 # Using a function instead of alias for better reliability
@@ -29,9 +31,11 @@ claude() {
 export -f claude
 
 # Convenience aliases for dangerously-skip-permissions mode
-# Both 'dsp' and 'DSP' work the same way
+# All aliases work the same way: dsp, DSP, dsb, DSB
 alias dsp='claude'
 alias DSP='claude'
+alias dsb='claude'
+alias DSB='claude'
 
 # ═══════════════════════════════════════════════════════════════════
 # ENVIRONMENT VARIABLES & API KEYS
