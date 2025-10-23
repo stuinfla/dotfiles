@@ -245,7 +245,7 @@ if [ -n "$CODESPACES" ]; then
     echo "✅ Claude Code installed (type 'dsp' or 'claude' to start)"
     echo "✅ SuperClaude installed (use /sc: commands)"
     echo "✅ Claude Flow @alpha installed (npx claude-flow@alpha)"
-    echo "✅ MCP servers configured (9 servers available)"
+    echo "✅ MCP servers configured (4 essential + 90+ via Claude Flow)"
     echo "✅ Session resume enabled ($CLAUDE_SESSION_DIR)"
     echo ""
     echo "💡 Helpful commands:"

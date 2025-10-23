@@ -299,41 +299,27 @@ install_pip_package() {
 }
 
 # Start all installations in parallel (background jobs)
-log "Starting parallel installations..."
-
-install_npm_package "mcp-installer" "mcp-installer" &
-PID_1=$!
-
-install_npm_package "@modelcontextprotocol/server-brave-search" "brave-search" &
-PID_2=$!
-
-install_pip_package "mcp-server-fetch" "fetch (Python)" &
-PID_3=$!
+# NOTE: Only installing essential MCPs. Claude Flow provides 90+ additional MCPs.
+log "Starting parallel installations (4 essential MCPs only)..."
 
 install_npm_package "@modelcontextprotocol/server-github" "github" &
-PID_4=$!
+PID_1=$!
 
 install_npm_package "@modelcontextprotocol/server-filesystem" "filesystem" &
-PID_5=$!
+PID_2=$!
 
 install_npm_package "@playwright/mcp" "playwright" &
-PID_6=$!
+PID_3=$!
 
 install_npm_package "@modelcontextprotocol/server-sequential-thinking" "sequential-thinking" &
-PID_7=$!
-
-install_npm_package "@modelcontextprotocol/server-gdrive" "google-drive" &
-PID_8=$!
-
-install_npm_package "@huggingface/mcp-server-huggingface" "huggingface" &
-PID_9=$!
+PID_4=$!
 
 # Wait for all installations to complete and track failures
 log "Waiting for installations to complete..."
 FAILED_INSTALLS=0
-TOTAL_INSTALLS=9
+TOTAL_INSTALLS=4
 
-for pid in $PID_1 $PID_2 $PID_3 $PID_4 $PID_5 $PID_6 $PID_7 $PID_8 $PID_9; do
+for pid in $PID_1 $PID_2 $PID_3 $PID_4; do
     if ! wait $pid 2>/dev/null; then
         ((FAILED_INSTALLS++))
     fi
@@ -341,9 +327,11 @@ done
 
 echo ""
 if [ $FAILED_INSTALLS -eq 0 ]; then
-    success "All $TOTAL_INSTALLS MCP packages installed successfully!"
-elif [ $FAILED_INSTALLS -le 3 ]; then
+    success "All $TOTAL_INSTALLS essential MCP packages installed successfully!"
+    success "Claude Flow provides 90+ additional MCPs for advanced workflows"
+elif [ $FAILED_INSTALLS -le 1 ]; then
     warn "$FAILED_INSTALLS/$TOTAL_INSTALLS installations failed (acceptable threshold)"
+    warn "Claude Flow provides 90+ additional MCPs if needed"
 else
     error "$FAILED_INSTALLS/$TOTAL_INSTALLS installations failed (too many failures)"
     error "Check logs in: $TEMP_LOG_DIR"
@@ -392,20 +380,20 @@ else
     ((FAIL_COUNT++))
 fi
 
-# Check MCP packages (sample)
+# Check MCP packages (4 essential only - Claude Flow provides 90+ additional)
 MCP_INSTALLED=0
 MCP_FAILED=0
 
-if npm list -g mcp-installer &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
-if npm list -g @modelcontextprotocol/server-brave-search &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
 if npm list -g @modelcontextprotocol/server-github &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
-if python3 -m pip show mcp-server-fetch &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
+if npm list -g @modelcontextprotocol/server-filesystem &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
+if npm list -g @playwright/mcp &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
+if npm list -g @modelcontextprotocol/server-sequential-thinking &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
 
 if [ $MCP_INSTALLED -ge 3 ]; then
-    success "MCP Servers: $MCP_INSTALLED installed, $MCP_FAILED failed"
+    success "Essential MCP Servers: $MCP_INSTALLED/4 installed (Claude Flow provides 90+ additional)"
     ((PASS_COUNT++))
 else
-    error "MCP Servers: $MCP_INSTALLED installed, $MCP_FAILED failed (minimum 3 required)"
+    error "Essential MCP Servers: $MCP_INSTALLED/4 installed (minimum 3 required)"
     ((FAIL_COUNT++))
 fi
 

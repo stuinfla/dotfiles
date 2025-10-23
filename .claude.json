@@ -1,20 +1,6 @@
 {
+  "_comment": "Minimal essential MCPs for Claude Code. Claude Flow provides 90+ additional MCPs.",
   "mcpServers": {
-    "mcp-installer": {
-      "command": "npx",
-      "args": ["-y", "mcp-installer"]
-    },
-    "brave-search": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
-      "env": {
-        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
-      }
-    },
-    "fetch": {
-      "command": "python3",
-      "args": ["-m", "mcp_server_fetch"]
-    },
     "github": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-github"],
@@ -26,24 +12,13 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspaces"]
     },
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp"]
-    },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     },
-    "google-drive": {
+    "playwright": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-gdrive"]
-    },
-    "huggingface": {
-      "command": "npx",
-      "args": ["-y", "@huggingface/mcp-server-huggingface"],
-      "env": {
-        "HUGGINGFACE_API_KEY": "${HUGGINGFACE_API_KEY}"
-      }
+      "args": ["-y", "@playwright/mcp"]
     }
   }
 }
