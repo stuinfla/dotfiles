@@ -7,6 +7,16 @@
 set -e  # Exit on error
 set -u  # Error on undefined variables
 
+# VERBOSE OUTPUT - Show what's happening
+exec 1> >(tee -a /tmp/dotfiles-install.log)
+exec 2>&1
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+echo "  DOTFILES INSTALLATION STARTED - $(date)"
+echo "  Log: /tmp/dotfiles-install.log"
+echo "════════════════════════════════════════════════════════════════════"
+echo ""
+
 # ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════
@@ -118,7 +128,11 @@ echo ""
 # STEP 1: Copy Configuration Files
 # ═══════════════════════════════════════════════════════════════════
 
-log "📋 Copying configuration files..."
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+log "📋 STEP 1/5: Copying configuration files..."
+echo "════════════════════════════════════════════════════════════════════"
+echo ""
 
 # Copy .bashrc FIRST (critical for shell aliases)
 if [ -f "$DOTFILES_DIR/.bashrc" ]; then
@@ -149,7 +163,10 @@ echo ""
 # STEP 2: Install Core Tools (Claude Code & SuperClaude)
 # ═══════════════════════════════════════════════════════════════════
 
-log "📦 Installing core tools..."
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+log "📦 STEP 2/5: Installing core tools..."
+echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
 # Install Claude Code (with timeout)
@@ -213,8 +230,10 @@ echo ""
 # STEP 3: Install MCP Servers (IN PARALLEL - NEW!)
 # ═══════════════════════════════════════════════════════════════════
 
-log "🔌 Installing MCP Servers (parallel installation)..."
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+log "🔌 STEP 3/5: Installing MCP Servers (parallel installation)..."
+echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
 # Create temporary directory for installation logs
@@ -308,8 +327,10 @@ echo ""
 # STEP 4: Verification
 # ═══════════════════════════════════════════════════════════════════
 
-log "🔍 Running verification checks..."
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+log "🔍 STEP 4/5: Running verification checks..."
+echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
 PASS_COUNT=0
@@ -367,8 +388,13 @@ echo ""
 # STEP 5: AUTO-RENAME CODESPACE TO MATCH REPOSITORY
 # ═══════════════════════════════════════════════════════════════════
 
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+log "🏷️  STEP 5/5: Auto-renaming Codespace to match repository..."
+echo "════════════════════════════════════════════════════════════════════"
+echo ""
+
 if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME" ]; then
-    log "🏷️  Auto-renaming Codespace to match repository..."
 
     REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
 
@@ -406,14 +432,62 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "🎯 NEXT STEPS:"
-echo "   • Type 'claude --version' to verify"
+echo "   • Type 'dsp --version' to verify DSP alias works"
 echo "   • Type 'check_secrets' to verify API keys"
 echo "   • Type 'check_sessions' to verify session directory"
-echo "   • Type 'claude' to start!"
+echo "   • Type 'dsp' or 'claude' to start!"
 echo ""
 echo "💡 Session resume is enabled at: ~/.claude-sessions"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Write visible summary to workspace
+SUMMARY_FILE="/workspaces/DOTFILES-INSTALL-SUMMARY.txt"
+if [ -d "/workspaces" ]; then
+    cat > "$SUMMARY_FILE" <<EOF
+════════════════════════════════════════════════════════════════════
+DOTFILES INSTALLATION COMPLETED - $(date)
+════════════════════════════════════════════════════════════════════
+
+Installation Results:
+  ✅ Passed:  $PASS_COUNT checks
+  ❌ Failed:  $FAIL_COUNT checks
+
+Files Installed:
+  • .bashrc (shell configuration with DSP/dsp aliases)
+  • .bash_profile (loads .bashrc on login)
+  • .claude.json (MCP server configuration)
+
+Tools Installed:
+  • Claude Code @latest
+  • SuperClaude (latest)
+  • Claude Flow @alpha
+  • 9 MCP Servers (parallel installation)
+
+Quick Test Commands:
+  dsp --version       # Test DSP alias
+  check_secrets       # Verify API keys
+  check_versions      # Show installed versions
+  check_sessions      # View Claude sessions
+
+Full Installation Log:
+  /tmp/dotfiles-install.log
+  /workspaces/.codespaces/.persistedshare/creation.log
+
+════════════════════════════════════════════════════════════════════
+EOF
+    success "Installation summary written to: $SUMMARY_FILE"
+    echo ""
+    echo "🔍 To view installation details:"
+    echo "   cat $SUMMARY_FILE"
+    echo "   cat /tmp/dotfiles-install.log"
+fi
+
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+echo "                    🎉 INSTALLATION COMPLETE! 🎉"
+echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
 # Cancel the script timeout
