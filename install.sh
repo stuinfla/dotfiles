@@ -120,21 +120,27 @@ echo ""
 
 log "📋 Copying configuration files..."
 
-# Copy .claude.json to home directory FIRST (critical for MCP servers)
-cp "$DOTFILES_DIR/.claude.json" ~/.claude.json
-chmod 600 ~/.claude.json  # Security: Only owner can read
-success "Copied .claude.json to home directory (permissions: 600)"
-
-# Note: .bashrc and .bash_profile are automatically copied by GitHub Codespaces
-# from the dotfiles repository. No manual copying needed!
-if [ -f "$HOME/.bashrc" ]; then
-    success "Shell configuration (.bashrc) loaded by Codespaces"
+# Copy .bashrc FIRST (critical for shell aliases)
+if [ -f "$DOTFILES_DIR/.bashrc" ]; then
+    cp "$DOTFILES_DIR/.bashrc" ~/.bashrc
+    success "Copied .bashrc to home directory"
 else
-    warn ".bashrc not found (GitHub Codespaces should have copied it)"
+    error "CRITICAL: .bashrc not found in $DOTFILES_DIR"
 fi
 
-if [ -f "$HOME/.bash_profile" ]; then
-    success "Bash profile (.bash_profile) loaded by Codespaces"
+# Copy .bash_profile (loads .bashrc on login)
+if [ -f "$DOTFILES_DIR/.bash_profile" ]; then
+    cp "$DOTFILES_DIR/.bash_profile" ~/.bash_profile
+    success "Copied .bash_profile to home directory"
+fi
+
+# Copy .claude.json (critical for MCP servers)
+if [ -f "$DOTFILES_DIR/.claude.json" ]; then
+    cp "$DOTFILES_DIR/.claude.json" ~/.claude.json
+    chmod 600 ~/.claude.json  # Security: Only owner can read
+    success "Copied .claude.json to home directory (permissions: 600)"
+else
+    error "CRITICAL: .claude.json not found in $DOTFILES_DIR"
 fi
 
 echo ""
