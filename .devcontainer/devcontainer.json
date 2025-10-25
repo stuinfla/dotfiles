@@ -1,0 +1,47 @@
+{
+  "name": "16-Core Development Environment with Extension Control",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+
+  // Request 16-core machine (premium GitHub account required)
+  "hostRequirements": {
+    "cpus": 16,
+    "memory": "64gb",
+    "storage": "128gb"
+  },
+
+  // Basic features
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    }
+  },
+
+  // VS Code customizations - CRITICAL for extension control
+  "customizations": {
+    "vscode": {
+      // Disable unwanted extensions
+      "extensions": [
+        // Kombai is allowed (not in this list)
+      ],
+      "settings": {
+        // Block specific extensions from auto-installing
+        "extensions.autoCheckUpdates": false,
+        "extensions.autoUpdate": false
+      }
+    }
+  },
+
+  // Common ports
+  "forwardPorts": [3000, 5000, 8000, 8080],
+
+  // Run install script if using dotfiles
+  // Use $DOTFILES environment variable (set by GitHub Codespaces) for correct path
+  "postCreateCommand": "bash -c 'if [ -n \"$DOTFILES\" ] && [ -f \"$DOTFILES/install.sh\" ]; then timeout 900 bash \"$DOTFILES/install.sh\"; else echo \"No dotfiles found, skipping installation\"; fi'",
+
+  // Set user
+  "remoteUser": "codespace"
+}
