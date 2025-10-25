@@ -240,13 +240,11 @@ if python3 -m SuperClaude --version &> /dev/null 2>&1; then
 
     # Run SuperClaude install to set up framework
     log "Running SuperClaude setup..."
-    if python3 -m SuperClaude install 2>&1 | tail -5; then
-        success "SuperClaude framework installed"
-    else
-        warn "SuperClaude framework setup had issues"
-    fi
+    # Silent setup attempt (no warnings on failure)
+    python3 -m SuperClaude install >> /tmp/dotfiles-install.log 2>&1 && success "SuperClaude framework installed" || true
 else
-    warn "SuperClaude installation failed (not critical)"
+    # Silent - SuperClaude is optional
+    true
 fi
 
 echo ""
@@ -381,12 +379,10 @@ else
     ((FAIL_COUNT++))
 fi
 
-# Check SuperClaude
+# Check SuperClaude (silent - optional)
 if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     success "SuperClaude: $(python3 -m SuperClaude --version 2>&1 | head -1)"
     ((PASS_COUNT++))
-else
-    warn "SuperClaude: Not available (optional)"
 fi
 
 # Check .claude.json

@@ -1,10 +1,9 @@
 {
-  "recommendations": [
-    "github.copilot",
-    "github.copilot-chat"
-  ],
+  "recommendations": [],
   "unwantedRecommendations": [
     "saoudrizwan.claude-dev",
-    "anthropics.claude-dev"
+    "anthropics.claude-dev",
+    "github.copilot",
+    "github.copilot-chat"
   ]
 }

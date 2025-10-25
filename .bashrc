@@ -97,8 +97,7 @@ auto_update_tools() {
         fi
     fi
 
-    echo "🔄 Checking for updates (running in background with ${timeout_seconds}s timeout)..."
-
+    # Run updates in background silently (no user notification)
     # Run updates in background to not block shell startup
     {
         echo "=== Update started at $(date) ===" > "$update_log"
@@ -136,7 +135,7 @@ auto_update_tools() {
         # Mark as updated today
         echo "$current_date" > "$update_marker"
 
-        echo "✅ Background updates completed! Check $update_log for details."
+        # Silent completion (no user notification)
     } &
 
     # Don't wait for background process
@@ -257,11 +256,8 @@ if [ -n "$CODESPACES" ]; then
         echo "📁 Repository: $REPO_NAME"
     fi
 
-    echo "✅ Claude Code installed (type 'dsp' or 'claude' to start)"
-    echo "✅ SuperClaude installed (use /sc: commands)"
-    echo "✅ Claude Flow @alpha installed (npx claude-flow@alpha)"
+    echo "✅ Claude Code ready (type 'dsp' or 'claude' to start)"
     echo "✅ MCP servers configured (4 essential + 90+ via Claude Flow)"
-    echo "✅ Session resume enabled ($CLAUDE_SESSION_DIR)"
     echo ""
     echo "💡 Helpful commands:"
     echo "   • dsp / claude      - Start Claude Code (skip permissions)"
