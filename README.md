@@ -6,12 +6,11 @@ Automated setup for GitHub Codespaces with Claude Code, SuperClaude, Claude Flow
 
 - **Claude Code** - Official Anthropic CLI with auto-permissions bypass
 - **SuperClaude** - Enhanced framework with `/sc:` commands
-- **Claude Flow @alpha** - Latest alpha release with automatic updates
-- **9 MCP Servers** - Extended AI capabilities (web search, GitHub, browser automation, etc.)
+- **Claude Flow @alpha** - Latest alpha release with automatic updates (90+ MCP servers)
+- **4 Essential MCP Servers** - GitHub, filesystem, playwright, sequential-thinking
 - **Auto-Updates** - Daily background updates for all tools
-- **Session Resume** - Context retention across sessions
-- **4-Core Codespaces** - Optimized machine configuration
-- **Auto-Rename** - Codespaces automatically named to match repository
+- **16-Core Codespaces** - Premium machine configuration (64GB RAM, 128GB storage)
+- **Cline Extension Blocking** - Prevents unwanted extensions from auto-loading
 
 ## 📋 Prerequisites
 

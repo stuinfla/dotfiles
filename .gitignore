@@ -1,0 +1,28 @@
+# ═══════════════════════════════════════════════════════════════════
+# DOTFILES .gitignore
+# Exclude runtime artifacts and local settings
+# ═══════════════════════════════════════════════════════════════════
+
+# Claude Flow runtime artifacts
+.claude-flow/
+
+# Swarm memory database
+.swarm/
+
+# Local Claude settings (user-specific)
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*-backup
+*.backup

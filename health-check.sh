@@ -87,14 +87,7 @@ if command -v claude &> /dev/null; then
     CLAUDE_VERSION=$(claude --version 2>&1 | head -1 || echo "unknown")
     success "Claude Code: $CLAUDE_VERSION"
 
-    # Check if session directory exists
-    if [ -d "$HOME/.claude-sessions" ]; then
-        success "   Session directory exists"
-        SESSION_COUNT=$(ls -1 "$HOME/.claude-sessions" 2>/dev/null | wc -l)
-        info "   Sessions found: $SESSION_COUNT"
-    else
-        warn "   Session directory missing"
-    fi
+    # Note: Session directory feature removed in Claude Code 2.0.27+
 else
     error "Claude Code: NOT INSTALLED"
 fi
@@ -140,10 +133,10 @@ header "3. CONFIGURATION FILES"
 # .bashrc
 if [ -f "$HOME/.bashrc" ]; then
     success ".bashrc: Present"
-    if grep -q "CLAUDE_SESSION_DIR" "$HOME/.bashrc" 2>/dev/null; then
-        success "   Session resume configured"
+    if grep -q "alias dsp" "$HOME/.bashrc" 2>/dev/null; then
+        success "   DSP alias configured"
     else
-        warn "   Session resume NOT configured"
+        warn "   DSP alias NOT configured"
     fi
 else
     error ".bashrc: MISSING"
@@ -182,14 +175,10 @@ fi
 header "4. MCP SERVERS"
 
 declare -a NPM_MCPS=(
-    "mcp-installer"
-    "@modelcontextprotocol/server-brave-search"
     "@modelcontextprotocol/server-github"
     "@modelcontextprotocol/server-filesystem"
     "@playwright/mcp"
     "@modelcontextprotocol/server-sequential-thinking"
-    "@modelcontextprotocol/server-gdrive"
-    "@huggingface/mcp-server-huggingface"
 )
 
 MCP_PASS=0
@@ -205,16 +194,8 @@ for mcp in "${NPM_MCPS[@]}"; do
     fi
 done
 
-# Check Python MCP
-if python3 -m pip show mcp-server-fetch &> /dev/null; then
-    success "mcp-server-fetch (Python)"
-    ((MCP_PASS++))
-else
-    error "mcp-server-fetch (Python)"
-    ((MCP_FAIL++))
-fi
-
-info "MCP Summary: $MCP_PASS installed, $MCP_FAIL missing"
+info "Essential MCP Summary: $MCP_PASS installed, $MCP_FAIL missing"
+info "Note: Additional MCPs available via Claude Flow @alpha"
 
 # ═══════════════════════════════════════════════════════════════════
 # 5. API KEYS / SECRETS
@@ -273,7 +254,9 @@ header "6. MACHINE SPECIFICATIONS"
 # CPU
 if command -v nproc &> /dev/null; then
     CPU_CORES=$(nproc)
-    if [ "$CPU_CORES" -ge 8 ]; then
+    if [ "$CPU_CORES" -ge 16 ]; then
+        success "CPU Cores: $CPU_CORES (16-core premium machine)"
+    elif [ "$CPU_CORES" -ge 8 ]; then
         success "CPU Cores: $CPU_CORES (8-core machine)"
     elif [ "$CPU_CORES" -ge 4 ]; then
         success "CPU Cores: $CPU_CORES (4-core machine)"
@@ -287,7 +270,9 @@ fi
 # Memory
 if command -v free &> /dev/null; then
     MEM_GB=$(free -g | awk '/^Mem:/{print $2}')
-    if [ "$MEM_GB" -ge 28 ]; then
+    if [ "$MEM_GB" -ge 60 ]; then
+        success "Memory: ${MEM_GB}GB (64GB premium machine)"
+    elif [ "$MEM_GB" -ge 28 ]; then
         success "Memory: ${MEM_GB}GB (32GB machine)"
     elif [ "$MEM_GB" -ge 14 ]; then
         success "Memory: ${MEM_GB}GB (16GB machine)"
