@@ -43,27 +43,36 @@ alias DSB='claude'
 # ENVIRONMENT VARIABLES & API KEYS
 # ═══════════════════════════════════════════════════════════════════
 
-# GitHub Codespaces automatically injects secrets as environment variables
-# These are set via: https://github.com/settings/codespaces
-# No need to explicitly export them - they're already available!
+# 🚨 CRITICAL AUTHENTICATION SEPARATION:
+#
+# Claude Code CLI Authentication:
+#   - Uses Claude Code Max subscription (via 'claude setup-token')
+#   - DOES NOT use ANTHROPIC_API_KEY (to avoid pay-per-token charges)
+#   - First-time setup: run 'dsp setup-token' and login with Claude.ai account
+#
+# Application API Access:
+#   - ANTHROPIC_API_KEY is available from GitHub Codespaces secrets
+#   - Applications can access it when needed for runtime operations
+#   - NOT exported to prevent Claude Code CLI from using it
+#
+# To access API key in your applications:
+#   - Use: $ANTHROPIC_API_KEY directly in your app code
+#   - GitHub Codespaces injects it as an environment variable
+#   - Configure at: https://github.com/settings/codespaces
 
-# Verify key environment variables are set (for debugging)
-if [ -n "$CODESPACES" ]; then
-    # We're in a Codespace - secrets should be available
-
-    # CLAUDE_API_KEY and ANTHROPIC_API_KEY are the same thing
-    # If one is set, use it for both names for compatibility
-    if [ -n "$CLAUDE_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
-        export ANTHROPIC_API_KEY="$CLAUDE_API_KEY"
-    elif [ -n "$ANTHROPIC_API_KEY" ] && [ -z "$CLAUDE_API_KEY" ]; then
-        export CLAUDE_API_KEY="$ANTHROPIC_API_KEY"
+# Helper function to show API key for apps (debugging only)
+show_api_key() {
+    if [ -n "$ANTHROPIC_API_KEY" ]; then
+        echo "✅ ANTHROPIC_API_KEY is set (available for applications)"
+        echo "   First 10 chars: ${ANTHROPIC_API_KEY:0:10}..."
+    else
+        echo "❌ ANTHROPIC_API_KEY not set"
+        echo "   Configure at: https://github.com/settings/codespaces"
     fi
+}
 
-    # Warn only if neither is set
-    if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$CLAUDE_API_KEY" ]; then
-        echo "⚠️  WARNING: ANTHROPIC_API_KEY/CLAUDE_API_KEY not set. Configure at https://github.com/settings/codespaces"
-    fi
-fi
+# Note: We do NOT export ANTHROPIC_API_KEY here to prevent Claude Code CLI
+# from using it. Applications can still access it from the environment.
 
 # ═══════════════════════════════════════════════════════════════════
 # AUTO-UPDATE MECHANISM (WITH TIMEOUT PROTECTION - NEW!)
