@@ -173,6 +173,25 @@ else
     exit 1
 fi
 
+# Copy .vscode directory to workspace (blocks Cline extension)
+if [ -d "/workspaces" ]; then
+    WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -type d ! -name "workspaces" -print -quit 2>/dev/null)
+    if [ -n "$WORKSPACE_DIR" ] && [ -d "$DOTFILES_DIR/.vscode" ]; then
+        mkdir -p "$WORKSPACE_DIR/.vscode"
+        if cp -r "$DOTFILES_DIR/.vscode/"* "$WORKSPACE_DIR/.vscode/" 2>/dev/null; then
+            success "Copied .vscode configuration to workspace (Cline blocked)"
+        else
+            log "⚠️  Could not copy .vscode (non-critical)"
+        fi
+    fi
+fi
+
+# Actively remove Cline extension if it's installed
+if command -v code &> /dev/null; then
+    log "🔧 Removing Cline extension if installed..."
+    code --uninstall-extension saoudrizwan.claude-dev &>/dev/null && success "Removed Cline extension" || log "   Cline not installed or already removed"
+fi
+
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════
