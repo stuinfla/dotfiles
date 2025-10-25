@@ -11,8 +11,9 @@ export PATH="$HOME/.local/bin:$PATH"
 # CLAUDE CODE CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════
 
-# SESSION RESUME SUPPORT - NEW!
-# This allows Claude to remember context between sessions
+# SESSION DIRECTORY - Not used with current Claude Code version
+# Claude Code 2.0.27+ does not support --session-dir option
+# Keeping directory for potential future use or manual session management
 export CLAUDE_SESSION_DIR="$HOME/.claude-sessions"
 mkdir -p "$CLAUDE_SESSION_DIR"
 
@@ -23,10 +24,11 @@ unalias DSP 2>/dev/null || true
 unalias dsb 2>/dev/null || true
 unalias DSB 2>/dev/null || true
 
-# Claude Code function - runs with --dangerously-skip-permissions AND session support
+# Claude Code function - runs with --dangerously-skip-permissions
 # Using a function instead of alias for better reliability
+# Note: --session-dir removed as it's not supported in Claude Code 2.0.27+
 claude() {
-    command claude --dangerously-skip-permissions --session-dir "$CLAUDE_SESSION_DIR" "$@"
+    command claude --dangerously-skip-permissions "$@"
 }
 export -f claude
 

@@ -44,11 +44,11 @@ cat > .devcontainer/devcontainer.json << 'EOF'
   "name": "${localWorkspaceFolderBasename}",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
 
-  // Request 4-core machine (or 8-core if you have access)
+  // Request 16-core machine (premium GitHub account required)
   "hostRequirements": {
-    "cpus": 4,
-    "memory": "16gb",
-    "storage": "32gb"
+    "cpus": 16,
+    "memory": "64gb",
+    "storage": "128gb"
   },
 
   // Optional: Add VS Code extensions if desired
@@ -69,7 +69,7 @@ echo -e "${GREEN}✅ Created .devcontainer/devcontainer.json${NC}"
 echo ""
 echo "Configuration:"
 echo "  - Codespace name: Matches repository name"
-echo "  - Machine size: 4-core, 16GB RAM, 32GB storage"
+echo "  - Machine size: 16-core, 64GB RAM, 128GB storage"
 echo "  - Extensions: GitHub Copilot (optional)"
 echo ""
 echo "📝 Next steps:"

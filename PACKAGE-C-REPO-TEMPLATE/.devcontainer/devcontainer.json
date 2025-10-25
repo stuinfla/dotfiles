@@ -1,12 +1,12 @@
 {
-  "name": "4-Core Development Environment",
+  "name": "16-Core Development Environment",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
 
-  // Request 4-core machine minimum (NOT 2-core default)
+  // Request 16-core machine (premium GitHub account required)
   "hostRequirements": {
-    "cpus": 4,
-    "memory": "16gb",
-    "storage": "32gb"
+    "cpus": 16,
+    "memory": "64gb",
+    "storage": "128gb"
   },
 
   // Basic features (customize as needed)
