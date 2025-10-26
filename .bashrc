@@ -196,6 +196,55 @@ rename-codespace() {
 }
 
 # ═══════════════════════════════════════════════════════════════════
+# INSTALLATION COMPLETE SUMMARY (shown once after installation)
+# ═══════════════════════════════════════════════════════════════════
+
+if [ -f ~/.cache/dotfiles_just_installed ]; then
+    rm ~/.cache/dotfiles_just_installed
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════════"
+    echo "               ✅ DOTFILES INSTALLATION COMPLETE! ✅"
+    echo "════════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "📦 Installed Versions:"
+    echo ""
+
+    # Claude Code
+    if command -v claude &> /dev/null; then
+        CLAUDE_V=$(claude --version 2>/dev/null | head -1 || echo "unknown")
+        echo "  🤖 Claude Code:     $CLAUDE_V"
+    fi
+
+    # SuperClaude
+    if command -v superclaude &> /dev/null || python3 -m SuperClaude --version &> /dev/null 2>&1; then
+        SC_V=$(superclaude --version 2>/dev/null | head -1 || python3 -m SuperClaude --version 2>/dev/null | head -1 || echo "unknown")
+        echo "  ⚡ SuperClaude:     $SC_V"
+    fi
+
+    # Claude Flow
+    if command -v claude-flow &> /dev/null; then
+        CF_V=$(claude-flow --version 2>/dev/null | head -1 || echo "unknown")
+        echo "  🌊 Claude Flow:     $CF_V"
+    fi
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "🚀 Quick Start:"
+    echo "   Type:  dsp          (Start Claude Code with AI assistance)"
+    echo "   Type:  dsp /c       (Continue previous conversation)"
+    echo ""
+    echo "💡 Helpful Commands:"
+    echo "   • check_versions    - Show all installed versions"
+    echo "   • check_secrets     - Verify API keys are loaded"
+    echo "   • check_sessions    - View Claude conversation history"
+    echo ""
+    echo "════════════════════════════════════════════════════════════════════"
+    echo ""
+fi
+
+# ═══════════════════════════════════════════════════════════════════
 # CODESPACE WELCOME MESSAGE
 # ═══════════════════════════════════════════════════════════════════
 

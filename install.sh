@@ -559,24 +559,8 @@ EOF
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# Auto-reload shell and verify DSP alias
+# Installation Summary and Version Verification
 # ═══════════════════════════════════════════════════════════════════
-
-echo ""
-log "🔄 Reloading shell configuration..."
-if [ -f ~/.bashrc ]; then
-    source ~/.bashrc 2>&1 | tee -a /tmp/dotfiles-install.log || true
-    success "Shell configuration reloaded"
-
-    # Verify DSP alias is available
-    if type dsp >/dev/null 2>&1; then
-        success "DSP function verified and ready to use"
-    else
-        warn "DSP function not found after reload"
-    fi
-else
-    warn "~/.bashrc not found, skipping reload"
-fi
 
 echo ""
 echo "════════════════════════════════════════════════════════════════════"
@@ -584,8 +568,55 @@ echo "                    🎉 INSTALLATION COMPLETE! 🎉"
 echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
+# Show installed versions for confidence
+log "✅ Installed Versions (verify everything is up to date):"
+echo ""
+
+# Claude Code version
+if command -v claude &> /dev/null; then
+    CLAUDE_VERSION=$(claude --version 2>/dev/null | head -1 || echo "version check failed")
+    echo "  🤖 Claude Code:     $CLAUDE_VERSION"
+else
+    echo "  ⚠️  Claude Code:     NOT FOUND"
+fi
+
+# SuperClaude version
+if command -v superclaude &> /dev/null; then
+    SC_VERSION=$(superclaude --version 2>/dev/null | head -1 || echo "version check failed")
+    echo "  ⚡ SuperClaude:     $SC_VERSION"
+elif python3 -m SuperClaude --version &> /dev/null; then
+    SC_VERSION=$(python3 -m SuperClaude --version 2>/dev/null | head -1 || echo "version check failed")
+    echo "  ⚡ SuperClaude:     $SC_VERSION"
+else
+    echo "  ⚠️  SuperClaude:     NOT FOUND (optional)"
+fi
+
+# Claude Flow version
+if command -v claude-flow &> /dev/null; then
+    CF_VERSION=$(claude-flow --version 2>/dev/null | head -1 || echo "version check failed")
+    echo "  🌊 Claude Flow:     $CF_VERSION"
+else
+    echo "  ⚠️  Claude Flow:     NOT FOUND"
+fi
+
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+echo ""
+
 # Cancel the script timeout
 kill $SCRIPT_TIMEOUT_PID 2>/dev/null || true
+
+# Create a flag file to show summary on next shell
+mkdir -p ~/.cache
+touch ~/.cache/dotfiles_just_installed
+
+echo "🔄 Restarting terminal with clean environment in 2 seconds..."
+echo ""
+sleep 2
+
+# Automatically restart terminal with fresh environment
+# This ensures DSP alias and all configurations are fully loaded
+exec bash
 
 # Clean up temp log directory if installation was successful
 if [ $FAIL_COUNT -eq 0 ]; then
