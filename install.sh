@@ -353,11 +353,22 @@ fi
 echo ""
 
 # Actively remove unwanted extensions (direct directory removal for Codespaces)
+# Extensions are installed asynchronously, so we need to wait for them
 log "🔧 Removing unwanted extensions..."
 
 VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
 
+# Wait up to 30 seconds for extensions directory to be created
+WAIT_COUNT=0
+while [ ! -d "$VSCODE_EXT_DIR" ] && [ $WAIT_COUNT -lt 30 ]; do
+    sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
+
 if [ -d "$VSCODE_EXT_DIR" ]; then
+    # Give extensions time to install (they install async after directory creation)
+    sleep 5
+
     # Remove Kombai (user doesn't want it)
     if rm -rf "$VSCODE_EXT_DIR"/kombai.kombai-* 2>/dev/null; then
         success "Removed Kombai extension"
@@ -379,7 +390,7 @@ if [ -d "$VSCODE_EXT_DIR" ]; then
         log "   Cline not installed"
     fi
 else
-    warn "VS Code remote extensions directory not found, skipping removal"
+    warn "VS Code remote extensions directory not found after 30s, skipping removal"
 fi
 
 echo ""
