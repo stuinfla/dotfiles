@@ -352,63 +352,32 @@ fi
 
 echo ""
 
-# Actively remove unwanted extensions (background process for async installation)
-# Extensions install AFTER postCreateCommand finishes, so we run this in background
-log "🔧 Starting background extension removal..."
+# Set up CONTINUOUS EXTENSION WATCHDOG
+# This watchdog runs AFTER you open the codespace, monitoring for 5 minutes
+# It checks every 10 seconds and removes unwanted extensions immediately
+log "🔧 Setting up extension watchdog..."
 
-# Create background script
-cat > /tmp/remove-extensions.sh << 'EXTENSION_REMOVER'
-#!/bin/bash
+# Make watchdog executable
+chmod +x "$HOME/.local/bin/extension-watchdog.sh" 2>/dev/null || warn "Watchdog script not found (will be available after symlinks)"
 
-VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
-LOG_FILE="/tmp/extension-removal.log"
+# Add one-time trigger to .bashrc that starts watchdog on first login
+if ! grep -q "EXTENSION_WATCHDOG_TRIGGER" "$HOME/.bashrc" 2>/dev/null; then
+    cat >> "$HOME/.bashrc" << 'WATCHDOG_TRIGGER'
 
-echo "[$(date)] Extension removal script started" >> "$LOG_FILE"
+# EXTENSION WATCHDOG - Runs once on first login to monitor and remove unwanted extensions
+if [ -z "$EXTENSION_WATCHDOG_STARTED" ] && [ -f "$HOME/.local/bin/extension-watchdog.sh" ]; then
+    export EXTENSION_WATCHDOG_STARTED=1
+    echo "🔧 Starting extension watchdog (will monitor for 5 minutes)..."
+    setsid bash "$HOME/.local/bin/extension-watchdog.sh" </dev/null >/dev/null 2>&1 &
+    disown
+    # EXTENSION_WATCHDOG_TRIGGER (marker for detection)
+fi
+WATCHDOG_TRIGGER
 
-# Wait up to 2 minutes for extensions directory to appear
-for i in {1..120}; do
-    if [ -d "$VSCODE_EXT_DIR" ]; then
-        echo "[$(date)] Extensions directory found, waiting for extensions to install..." >> "$LOG_FILE"
-        sleep 10  # Give extensions time to populate
-
-        # Remove unwanted extensions
-        REMOVED=0
-
-        if rm -rf "$VSCODE_EXT_DIR"/kombai.kombai-* 2>/dev/null; then
-            echo "[$(date)] ✅ Removed Kombai extension" >> "$LOG_FILE"
-            REMOVED=1
-        fi
-
-        if rm -rf "$VSCODE_EXT_DIR"/hbenl.vscode-test-explorer-* 2>/dev/null; then
-            echo "[$(date)] ✅ Removed Test Explorer UI" >> "$LOG_FILE"
-            REMOVED=1
-        fi
-
-        if rm -rf "$VSCODE_EXT_DIR"/saoudrizwan.claude-dev-* 2>/dev/null; then
-            echo "[$(date)] ✅ Removed Cline extension" >> "$LOG_FILE"
-            REMOVED=1
-        fi
-
-        if [ $REMOVED -eq 0 ]; then
-            echo "[$(date)] No unwanted extensions found" >> "$LOG_FILE"
-        fi
-
-        exit 0
-    fi
-    sleep 1
-done
-
-echo "[$(date)] Extensions directory not found after 2 minutes" >> "$LOG_FILE"
-exit 1
-EXTENSION_REMOVER
-
-chmod +x /tmp/remove-extensions.sh
-
-# Start TRULY detached background process (won't block postCreateCommand)
-setsid /tmp/remove-extensions.sh </dev/null >/dev/null 2>&1 &
-disown
-
-success "Extension removal started in background"
+    success "Extension watchdog configured in .bashrc"
+else
+    success "Extension watchdog already configured"
+fi
 
 echo ""
 

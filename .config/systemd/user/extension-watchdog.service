@@ -1,0 +1,17 @@
+[Unit]
+Description=VS Code Extension Watchdog
+Documentation=https://github.com/stuinfla/dotfiles
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/.local/bin/extension-watchdog.sh
+RemainAfterExit=no
+StandardOutput=journal
+StandardError=journal
+
+# Ensure log file is writable
+ExecStartPre=/bin/bash -c 'touch /tmp/extension-watchdog.log && chmod 666 /tmp/extension-watchdog.log'
+
+[Install]
+WantedBy=default.target
