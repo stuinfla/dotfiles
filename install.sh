@@ -352,46 +352,62 @@ fi
 
 echo ""
 
-# Actively remove unwanted extensions (direct directory removal for Codespaces)
-# Extensions are installed asynchronously, so we need to wait for them
-log "🔧 Removing unwanted extensions..."
+# Actively remove unwanted extensions (background process for async installation)
+# Extensions install AFTER postCreateCommand finishes, so we run this in background
+log "🔧 Starting background extension removal..."
+
+# Create background script
+cat > /tmp/remove-extensions.sh << 'EXTENSION_REMOVER'
+#!/bin/bash
 
 VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
+LOG_FILE="/tmp/extension-removal.log"
 
-# Wait up to 30 seconds for extensions directory to be created
-WAIT_COUNT=0
-while [ ! -d "$VSCODE_EXT_DIR" ] && [ $WAIT_COUNT -lt 30 ]; do
+echo "[$(date)] Extension removal script started" >> "$LOG_FILE"
+
+# Wait up to 2 minutes for extensions directory to appear
+for i in {1..120}; do
+    if [ -d "$VSCODE_EXT_DIR" ]; then
+        echo "[$(date)] Extensions directory found, waiting for extensions to install..." >> "$LOG_FILE"
+        sleep 10  # Give extensions time to populate
+
+        # Remove unwanted extensions
+        REMOVED=0
+
+        if rm -rf "$VSCODE_EXT_DIR"/kombai.kombai-* 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Kombai extension" >> "$LOG_FILE"
+            REMOVED=1
+        fi
+
+        if rm -rf "$VSCODE_EXT_DIR"/hbenl.vscode-test-explorer-* 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Test Explorer UI" >> "$LOG_FILE"
+            REMOVED=1
+        fi
+
+        if rm -rf "$VSCODE_EXT_DIR"/saoudrizwan.claude-dev-* 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Cline extension" >> "$LOG_FILE"
+            REMOVED=1
+        fi
+
+        if [ $REMOVED -eq 0 ]; then
+            echo "[$(date)] No unwanted extensions found" >> "$LOG_FILE"
+        fi
+
+        exit 0
+    fi
     sleep 1
-    WAIT_COUNT=$((WAIT_COUNT + 1))
 done
 
-if [ -d "$VSCODE_EXT_DIR" ]; then
-    # Give extensions time to install (they install async after directory creation)
-    sleep 5
+echo "[$(date)] Extensions directory not found after 2 minutes" >> "$LOG_FILE"
+exit 1
+EXTENSION_REMOVER
 
-    # Remove Kombai (user doesn't want it)
-    if rm -rf "$VSCODE_EXT_DIR"/kombai.kombai-* 2>/dev/null; then
-        success "Removed Kombai extension"
-    else
-        log "   Kombai not installed"
-    fi
+chmod +x /tmp/remove-extensions.sh
 
-    # Remove Test Explorer UI (causing unwanted popups)
-    if rm -rf "$VSCODE_EXT_DIR"/hbenl.vscode-test-explorer-* 2>/dev/null; then
-        success "Removed Test Explorer UI"
-    else
-        log "   Test Explorer not installed"
-    fi
+# Start background process
+nohup /tmp/remove-extensions.sh >> /tmp/dotfiles-startup.log 2>&1 &
 
-    # Remove Cline (conflicts with Claude Code)
-    if rm -rf "$VSCODE_EXT_DIR"/saoudrizwan.claude-dev-* 2>/dev/null; then
-        success "Removed Cline extension"
-    else
-        log "   Cline not installed"
-    fi
-else
-    warn "VS Code remote extensions directory not found after 30s, skipping removal"
-fi
+success "Extension removal started in background"
 
 echo ""
 
