@@ -15,6 +15,9 @@ set -u  # Error on undefined variables
 LOG_FILE="/tmp/dotfiles-install.log"
 PROGRESS_FILE="/tmp/dotfiles-progress.txt"
 
+# CRITICAL: Create visible status file in workspace that users can see!
+VISIBLE_STATUS_FILE="/workspaces/DOTFILES-INSTALLATION-STATUS.txt"
+
 # Clear previous logs
 > "$LOG_FILE"
 > "$PROGRESS_FILE"
@@ -38,6 +41,24 @@ echo ""
 # Initialize progress file
 echo "Installation started at $(date)" > "$PROGRESS_FILE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> "$PROGRESS_FILE"
+
+# Create VISIBLE status file that appears in VS Code file explorer
+cat > "$VISIBLE_STATUS_FILE" <<'EOF'
+════════════════════════════════════════════════════════════════════
+🚀 DOTFILES INSTALLATION IN PROGRESS
+════════════════════════════════════════════════════════════════════
+
+Installation started at: $(date)
+
+⏱️  Expected time: 3-5 minutes
+
+This file updates in real-time. Refresh to see latest progress!
+
+════════════════════════════════════════════════════════════════════
+PROGRESS LOG:
+════════════════════════════════════════════════════════════════════
+
+EOF
 
 # ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION
@@ -64,11 +85,13 @@ log() {
     echo "[$(date +'%H:%M:%S')] $*" >> "$LOG_FILE"
 }
 
-# Print progress to both user AND progress file
+# Print progress to user, progress file, AND visible status file
 progress() {
     local msg="$*"
     echo -e "${YELLOW}⏳ $msg${NC}"
     echo "[$(date +'%H:%M:%S')] $msg" >> "$PROGRESS_FILE"
+    # Also write to VISIBLE file in workspace
+    echo "[$(date +'%H:%M:%S')] ⏳ $msg" >> "$VISIBLE_STATUS_FILE"
 }
 
 # Print to user (clean, no timestamp)
@@ -76,22 +99,25 @@ user_message() {
     echo "$*"
 }
 
-# Print success message to user AND progress file
+# Print success message to user, progress file, AND visible status file
 success() {
     echo -e "${GREEN}✅ $*${NC}"
     echo "[$(date +'%H:%M:%S')] ✅ $*" >> "$PROGRESS_FILE"
+    echo "[$(date +'%H:%M:%S')] ✅ $*" >> "$VISIBLE_STATUS_FILE"
 }
 
-# Print error message to user AND progress file
+# Print error message to user, progress file, AND visible status file
 error() {
     echo -e "${RED}❌ $*${NC}"
     echo "[$(date +'%H:%M:%S')] ❌ $*" >> "$PROGRESS_FILE"
+    echo "[$(date +'%H:%M:%S')] ❌ $*" >> "$VISIBLE_STATUS_FILE"
 }
 
-# Print warning message to user AND progress file
+# Print warning message to user, progress file, AND visible status file
 warn() {
     echo -e "${YELLOW}⚠️  $*${NC}"
     echo "[$(date +'%H:%M:%S')] ⚠️ $*" >> "$PROGRESS_FILE"
+    echo "[$(date +'%H:%M:%S')] ⚠️ $*" >> "$VISIBLE_STATUS_FILE"
 }
 
 # Cleanup function for timeouts
@@ -652,6 +678,34 @@ touch ~/.cache/dotfiles_just_installed
 
 echo "🔄 Restarting terminal with clean environment in 2 seconds..."
 echo ""
+
+# Mark installation as complete in visible status file
+cat >> "$VISIBLE_STATUS_FILE" <<EOF
+
+════════════════════════════════════════════════════════════════════
+✅ INSTALLATION COMPLETED SUCCESSFULLY!
+════════════════════════════════════════════════════════════════════
+
+Completed at: $(date)
+
+✅ Passed:  $PASS_COUNT checks
+❌ Failed:  $FAIL_COUNT checks
+
+🎉 Your codespace is ready!
+
+To activate DSP alias:
+  source ~/.bashrc
+
+Then you can use:
+  dsp               # Start Claude Code
+  dsp --version     # Verify installation
+  check_versions    # Show all installed tools
+
+This file will auto-delete when you close this codespace.
+
+════════════════════════════════════════════════════════════════════
+EOF
+
 sleep 2
 
 # Automatically restart terminal with fresh environment
