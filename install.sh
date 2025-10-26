@@ -16,7 +16,20 @@ LOG_FILE="/tmp/dotfiles-install.log"
 PROGRESS_FILE="/tmp/dotfiles-progress.txt"
 
 # CRITICAL: Create visible status file in workspace that users can see!
-VISIBLE_STATUS_FILE="/workspaces/DOTFILES-INSTALLATION-STATUS.txt"
+# postCreateCommand runs from the repository root, so write there
+# Find the workspace directory (should be /workspaces/<repo-name>)
+if [ -d "/workspaces" ]; then
+    WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -type d ! -name "workspaces" -print -quit 2>/dev/null)
+    if [ -n "$WORKSPACE_DIR" ]; then
+        VISIBLE_STATUS_FILE="$WORKSPACE_DIR/DOTFILES-INSTALLATION-STATUS.txt"
+    else
+        # Fallback to current directory if we can't find workspace
+        VISIBLE_STATUS_FILE="./DOTFILES-INSTALLATION-STATUS.txt"
+    fi
+else
+    # Not in codespaces, write to current directory
+    VISIBLE_STATUS_FILE="./DOTFILES-INSTALLATION-STATUS.txt"
+fi
 
 # Clear previous logs
 > "$LOG_FILE"
