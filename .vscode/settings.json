@@ -7,12 +7,21 @@
   "workbench.welcomePage.walkthroughs.openOnInstall": false,
   "workbench.startupEditor": "none",
   "workbench.tips.enabled": false,
+  "gettingStarted.showOnStartup": false,
+
+  // CRITICAL: Force settings to apply to all profiles (required for VS Code Web/Codespaces)
+  // GitHub Issues #134073, #160635: VS Code Web IGNORES startupEditor without this!
+  "workbench.settings.applyToAllProfiles": [
+    "workbench.startupEditor",
+    "workbench.welcomePage.walkthroughs.openOnInstall",
+    "gettingStarted.showOnStartup",
+    "workbench.tips.enabled"
+  ],
 
   // Disable extension welcome pages and getting started
   "extensions.ignoreRecommendations": true,
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
-  "gettingStarted.showOnStartup": false,
 
   // Disable all prompts and notifications
   "update.mode": "none",
