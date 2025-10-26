@@ -16,20 +16,9 @@ LOG_FILE="/tmp/dotfiles-install.log"
 PROGRESS_FILE="/tmp/dotfiles-progress.txt"
 
 # CRITICAL: Create visible status file in workspace that users can see!
-# postCreateCommand runs from the repository root, so write there
-# Find the workspace directory (should be /workspaces/<repo-name>)
-if [ -d "/workspaces" ]; then
-    WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -type d ! -name "workspaces" -print -quit 2>/dev/null)
-    if [ -n "$WORKSPACE_DIR" ]; then
-        VISIBLE_STATUS_FILE="$WORKSPACE_DIR/DOTFILES-INSTALLATION-STATUS.txt"
-    else
-        # Fallback to current directory if we can't find workspace
-        VISIBLE_STATUS_FILE="./DOTFILES-INSTALLATION-STATUS.txt"
-    fi
-else
-    # Not in codespaces, write to current directory
-    VISIBLE_STATUS_FILE="./DOTFILES-INSTALLATION-STATUS.txt"
-fi
+# postCreateCommand runs FROM the repository root, so $PWD is /workspaces/<repo-name>
+# Just write to current directory - simple and guaranteed to work!
+VISIBLE_STATUS_FILE="$PWD/DOTFILES-INSTALLATION-STATUS.txt"
 
 # Clear previous logs
 > "$LOG_FILE"
@@ -56,7 +45,8 @@ echo "Installation started at $(date)" > "$PROGRESS_FILE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> "$PROGRESS_FILE"
 
 # Create VISIBLE status file that appears in VS Code file explorer
-cat > "$VISIBLE_STATUS_FILE" <<'EOF'
+# Note: Use unquoted EOF to allow variable expansion
+cat > "$VISIBLE_STATUS_FILE" <<EOF
 ════════════════════════════════════════════════════════════════════
 🚀 DOTFILES INSTALLATION IN PROGRESS
 ════════════════════════════════════════════════════════════════════
@@ -66,6 +56,8 @@ Installation started at: $(date)
 ⏱️  Expected time: 3-5 minutes
 
 This file updates in real-time. Refresh to see latest progress!
+
+File location: $VISIBLE_STATUS_FILE
 
 ════════════════════════════════════════════════════════════════════
 PROGRESS LOG:
