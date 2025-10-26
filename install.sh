@@ -404,8 +404,9 @@ EXTENSION_REMOVER
 
 chmod +x /tmp/remove-extensions.sh
 
-# Start background process
-nohup /tmp/remove-extensions.sh >> /tmp/dotfiles-startup.log 2>&1 &
+# Start TRULY detached background process (won't block postCreateCommand)
+setsid /tmp/remove-extensions.sh </dev/null >/dev/null 2>&1 &
+disown
 
 success "Extension removal started in background"
 
