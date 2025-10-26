@@ -590,9 +590,8 @@ if [ -f "$DOTFILES_DIR/scripts/cleanup-vscode-state.sh" ]; then
     bash "$DOTFILES_DIR/scripts/cleanup-vscode-state.sh" 2>/dev/null || true
 fi
 
-if [ -f "$DOTFILES_DIR/scripts/reset-kombai.sh" ]; then
-    bash "$DOTFILES_DIR/scripts/reset-kombai.sh" 2>/dev/null || true
-fi
+# Kombai is now uninstalled during extension removal (line 282), no need for reset script
+# Removed reset-kombai.sh call
 
 # NEW: Suppress all welcome screens and setup prompts
 if [ -f "$DOTFILES_DIR/scripts/suppress-welcome-screens.sh" ]; then
