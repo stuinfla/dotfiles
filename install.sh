@@ -352,20 +352,34 @@ fi
 
 echo ""
 
-# Actively remove unwanted extensions (AFTER Claude Code is installed)
-if command -v code &> /dev/null; then
-    log "🔧 Removing unwanted extensions..."
+# Actively remove unwanted extensions (direct directory removal for Codespaces)
+log "🔧 Removing unwanted extensions..."
 
-    # Remove Cline (conflicts with Claude Code)
-    code --uninstall-extension saoudrizwan.claude-dev &>/dev/null && success "Removed Cline extension" || log "   Cline not installed"
+VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
 
+if [ -d "$VSCODE_EXT_DIR" ]; then
     # Remove Kombai (user doesn't want it)
-    code --uninstall-extension kombai.kombai &>/dev/null && success "Removed Kombai extension" || log "   Kombai not installed"
+    if rm -rf "$VSCODE_EXT_DIR"/kombai.kombai-* 2>/dev/null; then
+        success "Removed Kombai extension"
+    else
+        log "   Kombai not installed"
+    fi
 
     # Remove Test Explorer UI (causing unwanted popups)
-    code --uninstall-extension hbenl.vscode-test-explorer &>/dev/null && success "Removed Test Explorer UI" || log "   Test Explorer not installed"
+    if rm -rf "$VSCODE_EXT_DIR"/hbenl.vscode-test-explorer-* 2>/dev/null; then
+        success "Removed Test Explorer UI"
+    else
+        log "   Test Explorer not installed"
+    fi
+
+    # Remove Cline (conflicts with Claude Code)
+    if rm -rf "$VSCODE_EXT_DIR"/saoudrizwan.claude-dev-* 2>/dev/null; then
+        success "Removed Cline extension"
+    else
+        log "   Cline not installed"
+    fi
 else
-    log "⚠️  VS Code 'code' command not available yet, skipping extension removal"
+    warn "VS Code remote extensions directory not found, skipping removal"
 fi
 
 echo ""
