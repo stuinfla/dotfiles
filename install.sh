@@ -11,14 +11,13 @@
 # We explicitly check critical commands and exit at the end with proper code
 set -u  # Error on undefined variables
 
-# VERBOSE OUTPUT - Show what's happening
-exec 1> >(tee -a /tmp/dotfiles-install.log)
-exec 2>&1
+# SILENT INSTALLATION - Only show progress, log everything else
+LOG_FILE="/tmp/dotfiles-install.log"
+exec 2>> "$LOG_FILE"  # Send stderr to log file
+
 echo ""
-echo "════════════════════════════════════════════════════════════════════"
-echo "  DOTFILES INSTALLATION STARTED - $(date)"
-echo "  Log: /tmp/dotfiles-install.log"
-echo "════════════════════════════════════════════════════════════════════"
+echo "🚀 Installing dotfiles..."
+echo "   (This takes 3-5 minutes - grab a coffee!)"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════
@@ -41,12 +40,17 @@ readonly NC='\033[0m' # No Color
 # HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════
 
-# Print with timestamp
+# Print to log file only (with timestamp)
 log() {
-    echo "[$(date +'%H:%M:%S')] $*"
+    echo "[$(date +'%H:%M:%S')] $*" >> "$LOG_FILE"
 }
 
-# Print success message
+# Print to user (clean, no timestamp)
+user_message() {
+    echo "$*"
+}
+
+# Print success message to user
 success() {
     echo -e "${GREEN}✅ $*${NC}"
 }
@@ -208,66 +212,53 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════
 
 echo ""
-echo "════════════════════════════════════════════════════════════════════"
-log "📦 STEP 2/5: Installing core tools..."
-echo "════════════════════════════════════════════════════════════════════"
+user_message "📦 Installing AI tools..."
 echo ""
 
-# Install Claude Code (with timeout)
-log "1/3 Installing Claude Code..."
-if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --force 2>&1 | (grep -v "npm WARN" || true) | tail -3; then
+# Install Claude Code (completely silent)
+user_message "  [1/3] Claude Code..."
+log "Installing Claude Code..."
+if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --force >> "$LOG_FILE" 2>&1; then
     if command -v claude &> /dev/null; then
-        CLAUDE_VERSION=$(claude --version 2>&1 | head -1 || echo "unknown")
-        success "Claude Code installed: $CLAUDE_VERSION"
-    else
-        error "Claude Code installation failed - command not found"
+        success "        Claude Code installed"
+        log "Claude Code version: $(claude --version 2>&1 | head -1)"
     fi
-else
-    error "Claude Code installation timed out or failed"
 fi
 
-echo ""
-
-# Install SuperClaude (with timeout and proper error handling)
-log "2/3 Installing SuperClaude..."
+# Install SuperClaude (completely silent, optional)
+user_message "  [2/3] SuperClaude..."
+log "Installing SuperClaude..."
 SUPERCLAUDE_INSTALLED=false
 if command -v pipx &> /dev/null; then
-    if timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force 2>&1 | tail -2; then
+    if timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force >> "$LOG_FILE" 2>&1; then
         SUPERCLAUDE_INSTALLED=true
-    elif timeout $PACKAGE_TIMEOUT pipx upgrade SuperClaude 2>&1 | tail -2; then
+    elif timeout $PACKAGE_TIMEOUT pipx upgrade SuperClaude >> "$LOG_FILE" 2>&1; then
         SUPERCLAUDE_INSTALLED=true
     fi
 else
-    if timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude 2>&1 | tail -3; then
+    if timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude >> "$LOG_FILE" 2>&1; then
         SUPERCLAUDE_INSTALLED=true
     fi
 fi
 
 if python3 -m SuperClaude --version &> /dev/null 2>&1; then
-    SUPERCLAUDE_VERSION=$(python3 -m SuperClaude --version 2>&1 | head -1 || echo "installed")
-    success "SuperClaude installed: $SUPERCLAUDE_VERSION"
-
-    # Run SuperClaude install to set up framework
-    log "Running SuperClaude setup..."
-    # Silent setup attempt (no warnings on failure)
-    python3 -m SuperClaude install >> /tmp/dotfiles-install.log 2>&1 && success "SuperClaude framework installed" || true
-else
-    # Silent - SuperClaude is optional
-    true
+    success "        SuperClaude installed"
+    log "SuperClaude version: $(python3 -m SuperClaude --version 2>&1 | head -1)"
+    # Silent setup
+    python3 -m SuperClaude install >> "$LOG_FILE" 2>&1 || true
 fi
 
-echo ""
-
-# Install Claude Flow @alpha (with timeout) - install globally first
-log "3/3 Installing Claude Flow @alpha..."
-if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force 2>&1 | (grep -v "npm WARN" || true) | tail -3; then
+# Install Claude Flow @alpha (completely silent)
+user_message "  [3/3] Claude Flow..."
+log "Installing Claude Flow @alpha..."
+if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FILE" 2>&1; then
     if command -v claude-flow &> /dev/null; then
-        CLAUDE_FLOW_VERSION=$(claude-flow --version 2>&1 | head -1 || echo "installed")
-        success "Claude Flow installed: $CLAUDE_FLOW_VERSION"
+        success "        Claude Flow installed"
+        log "Claude Flow version: $(claude-flow --version 2>&1 | head -1)"
 
-        # Initialize Claude Flow configuration
+        # Initialize Claude Flow configuration (silent)
         log "Initializing Claude Flow configuration..."
-        if timeout $PACKAGE_TIMEOUT claude-flow init --force 2>&1 | tail -2; then
+        if timeout $PACKAGE_TIMEOUT claude-flow init --force >> "$LOG_FILE" 2>&1; then
             success "Claude Flow configuration initialized"
         else
             warn "Claude Flow init had issues (may need manual setup)"
@@ -276,10 +267,10 @@ if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force 2>&1 | (gre
         # CRITICAL: Register Claude Flow as MCP server
         log "Registering Claude Flow as MCP server..."
         if command -v claude &> /dev/null; then
-            if claude mcp add claude-flow npx claude-flow@alpha mcp start 2>&1 | tail -2; then
-                success "Claude Flow MCP server registered"
+            if claude mcp add claude-flow npx claude-flow@alpha mcp start >> "$LOG_FILE" 2>&1; then
+                success "        Claude Flow MCP server registered"
             else
-                error "CRITICAL: Failed to register Claude Flow MCP server"
+                error "Failed to register Claude Flow MCP server"
             fi
         else
             warn "Claude CLI not available yet - MCP registration will be attempted later"
@@ -306,50 +297,53 @@ echo ""
 # Create temporary directory for installation logs
 TEMP_LOG_DIR=$(mktemp -d)
 
-# Function to install npm package with logging
+# Function to install npm package silently
 install_npm_package() {
     local package_name="$1"
     local display_name="$2"
-    local log_file="$TEMP_LOG_DIR/${package_name//\//_}.log"
 
-    if timeout $PACKAGE_TIMEOUT npm install -g "${package_name}@latest" --force > "$log_file" 2>&1; then
+    log "Installing $package_name..."
+    if timeout $PACKAGE_TIMEOUT npm install -g "${package_name}@latest" --force >> "$LOG_FILE" 2>&1; then
         success "$display_name"
         return 0
     else
-        error "$display_name (check $log_file)"
+        error "$display_name"
+        log "Failed to install $package_name - check $LOG_FILE for details"
         return 1
     fi
 }
 
-# Function to install Python package with logging
+# Function to install Python package silently
 install_pip_package() {
     local package_name="$1"
     local display_name="$2"
-    local log_file="$TEMP_LOG_DIR/${package_name}.log"
 
-    if timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall "$package_name" > "$log_file" 2>&1; then
+    log "Installing $package_name..."
+    if timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall "$package_name" >> "$LOG_FILE" 2>&1; then
         success "$display_name"
         return 0
     else
-        error "$display_name (check $log_file)"
+        error "$display_name"
+        log "Failed to install $package_name - check $LOG_FILE for details"
         return 1
     fi
 }
 
 # Start all installations in parallel (background jobs)
 # NOTE: Only installing essential MCPs. Claude Flow provides 90+ additional MCPs.
+user_message "  Installing 4 essential MCP servers..."
 log "Starting parallel installations (4 essential MCPs only)..."
 
-install_npm_package "@modelcontextprotocol/server-github" "github" &
+install_npm_package "@modelcontextprotocol/server-github" "  ✅ GitHub MCP" &
 PID_1=$!
 
-install_npm_package "@modelcontextprotocol/server-filesystem" "filesystem" &
+install_npm_package "@modelcontextprotocol/server-filesystem" "  ✅ Filesystem MCP" &
 PID_2=$!
 
-install_npm_package "@playwright/mcp" "playwright" &
+install_npm_package "@playwright/mcp" "  ✅ Playwright MCP" &
 PID_3=$!
 
-install_npm_package "@modelcontextprotocol/server-sequential-thinking" "sequential-thinking" &
+install_npm_package "@modelcontextprotocol/server-sequential-thinking" "  ✅ Sequential Thinking MCP" &
 PID_4=$!
 
 # Wait for all installations to complete and track failures
@@ -452,7 +446,8 @@ if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME"
     REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
 
     if [ -n "$REPO_NAME" ]; then
-        if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$REPO_NAME" 2>&1 | tail -2; then
+        log "Renaming codespace to: $REPO_NAME"
+        if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$REPO_NAME" >> "$LOG_FILE" 2>&1; then
             success "Codespace renamed to: $REPO_NAME"
         else
             warn "Could not auto-rename codespace (not critical, you can run 'rename-codespace' manually)"

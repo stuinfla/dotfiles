@@ -6,6 +6,16 @@
 
 ---
 
+## 🌟 Why This Exists (For Beginners)
+
+**GitHub Codespaces are incredibly powerful** - they give you a full development computer in the cloud, ready to code from anywhere. But here's the problem: setting one up properly takes hours of configuration, installing tools, configuring settings, and troubleshooting issues you don't fully understand.
+
+**We do the hard stuff for you.** Instead of learning all this the hard way, we created an automated process that sets up a clean, working codespace that supports AI-powered coding with Claude Code, SuperClaude, and Claude Flow - all without you having to monkey around with settings you're not comfortable with.
+
+**You get:** A ready-to-code environment that works for most people in most cases, set up in 3-5 minutes instead of 3+ hours. You can focus on building your projects instead of fighting with configuration files.
+
+---
+
 ## 🚀 Quick Setup (3 Steps - One Time Only!)
 
 ### Step 1: Fork This Repo
