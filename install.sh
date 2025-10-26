@@ -11,14 +11,33 @@
 # We explicitly check critical commands and exit at the end with proper code
 set -u  # Error on undefined variables
 
-# SILENT INSTALLATION - Only show progress, log everything else
+# VISIBLE INSTALLATION WITH PROGRESS TRACKING
 LOG_FILE="/tmp/dotfiles-install.log"
-exec 2>> "$LOG_FILE"  # Send stderr to log file
+PROGRESS_FILE="/tmp/dotfiles-progress.txt"
+
+# Clear previous logs
+> "$LOG_FILE"
+> "$PROGRESS_FILE"
+
+# Send stderr to log file but keep stdout visible
+exec 2>> "$LOG_FILE"
 
 echo ""
-echo "🚀 Installing dotfiles..."
-echo "   (This takes 3-5 minutes - grab a coffee!)"
+echo "════════════════════════════════════════════════════════════════════"
+echo "🚀 DOTFILES INSTALLATION STARTING"
+echo "════════════════════════════════════════════════════════════════════"
 echo ""
+echo "📊 Progress tracking: tail -f $PROGRESS_FILE"
+echo "📝 Full logs: tail -f $LOG_FILE"
+echo ""
+echo "⏱️  Expected time: 3-5 minutes (parallelized installation)"
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+echo ""
+
+# Initialize progress file
+echo "Installation started at $(date)" > "$PROGRESS_FILE"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> "$PROGRESS_FILE"
 
 # ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION
@@ -45,24 +64,34 @@ log() {
     echo "[$(date +'%H:%M:%S')] $*" >> "$LOG_FILE"
 }
 
+# Print progress to both user AND progress file
+progress() {
+    local msg="$*"
+    echo -e "${YELLOW}⏳ $msg${NC}"
+    echo "[$(date +'%H:%M:%S')] $msg" >> "$PROGRESS_FILE"
+}
+
 # Print to user (clean, no timestamp)
 user_message() {
     echo "$*"
 }
 
-# Print success message to user
+# Print success message to user AND progress file
 success() {
     echo -e "${GREEN}✅ $*${NC}"
+    echo "[$(date +'%H:%M:%S')] ✅ $*" >> "$PROGRESS_FILE"
 }
 
-# Print error message
+# Print error message to user AND progress file
 error() {
     echo -e "${RED}❌ $*${NC}"
+    echo "[$(date +'%H:%M:%S')] ❌ $*" >> "$PROGRESS_FILE"
 }
 
-# Print warning message
+# Print warning message to user AND progress file
 warn() {
     echo -e "${YELLOW}⚠️  $*${NC}"
+    echo "[$(date +'%H:%M:%S')] ⚠️ $*" >> "$PROGRESS_FILE"
 }
 
 # Cleanup function for timeouts
@@ -138,7 +167,7 @@ echo ""
 
 echo ""
 echo "════════════════════════════════════════════════════════════════════"
-log "📋 STEP 1/5: Copying configuration files..."
+progress "STEP 1/5: Copying configuration files..."
 echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
@@ -177,13 +206,14 @@ else
     exit 1
 fi
 
-# Copy .vscode directory to workspace (blocks Cline extension)
+# Copy .vscode directory to workspace (blocks Cline + suppresses welcome screens)
+progress "Configuring VS Code to suppress welcome screens..."
 if [ -d "/workspaces" ]; then
     WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -type d ! -name "workspaces" -print -quit 2>/dev/null)
     if [ -n "$WORKSPACE_DIR" ] && [ -d "$DOTFILES_DIR/.vscode" ]; then
         mkdir -p "$WORKSPACE_DIR/.vscode"
         if cp -r "$DOTFILES_DIR/.vscode/"* "$WORKSPACE_DIR/.vscode/" 2>/dev/null; then
-            success "Copied .vscode configuration to workspace (Cline blocked)"
+            success "VS Code configured: Cline blocked + welcome screens suppressed"
         else
             log "⚠️  Could not copy .vscode (non-critical)"
         fi
@@ -212,11 +242,13 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════
 
 echo ""
-user_message "📦 Installing AI tools..."
+echo "════════════════════════════════════════════════════════════════════"
+progress "STEP 2/5: Installing AI tools (Claude Code, SuperClaude, Claude Flow)..."
+echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
-# Install Claude Code (completely silent)
-user_message "  [1/3] Claude Code..."
+# Install Claude Code with visible progress
+progress "  [1/3] Installing Claude Code (latest)..."
 log "Installing Claude Code..."
 if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --force >> "$LOG_FILE" 2>&1; then
     if command -v claude &> /dev/null; then
@@ -225,8 +257,8 @@ if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --fo
     fi
 fi
 
-# Install SuperClaude (completely silent, optional)
-user_message "  [2/3] SuperClaude..."
+# Install SuperClaude with visible progress
+progress "  [2/3] Installing SuperClaude (latest)..."
 log "Installing SuperClaude..."
 SUPERCLAUDE_INSTALLED=false
 if command -v pipx &> /dev/null; then
@@ -248,8 +280,8 @@ if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     python3 -m SuperClaude install >> "$LOG_FILE" 2>&1 || true
 fi
 
-# Install Claude Flow @alpha (completely silent)
-user_message "  [3/3] Claude Flow..."
+# Install Claude Flow @alpha with visible progress
+progress "  [3/3] Installing Claude Flow @alpha (MCP server + 90+ tools)..."
 log "Installing Claude Flow @alpha..."
 if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FILE" 2>&1; then
     if command -v claude-flow &> /dev/null; then
@@ -331,7 +363,11 @@ install_pip_package() {
 
 # Start all installations in parallel (background jobs)
 # NOTE: Only installing essential MCPs. Claude Flow provides 90+ additional MCPs.
-user_message "  Installing 4 essential MCP servers..."
+progress "Installing 4 essential MCP servers in parallel..."
+progress "  • GitHub MCP (starting...)"
+progress "  • Filesystem MCP (starting...)"
+progress "  • Playwright MCP (starting...)"
+progress "  • Sequential Thinking MCP (starting...)"
 log "Starting parallel installations (4 essential MCPs only)..."
 
 install_npm_package "@modelcontextprotocol/server-github" "  ✅ GitHub MCP" &
@@ -378,7 +414,7 @@ echo ""
 
 echo ""
 echo "════════════════════════════════════════════════════════════════════"
-log "🔍 STEP 4/5: Running verification checks..."
+progress "STEP 4/5: Running verification checks..."
 echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
@@ -437,7 +473,7 @@ echo ""
 
 echo ""
 echo "════════════════════════════════════════════════════════════════════"
-log "🏷️  STEP 5/5: Auto-renaming Codespace to match repository..."
+progress "STEP 5/5: Auto-renaming Codespace to match repository..."
 echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
@@ -498,13 +534,22 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Run cleanup scripts to ensure clean VS Code state
-# This ensures Kombai shows workspace files instead of restoring previous session
+progress "Suppressing VS Code welcome screens and setup prompts..."
+
 if [ -f "$DOTFILES_DIR/scripts/cleanup-vscode-state.sh" ]; then
     bash "$DOTFILES_DIR/scripts/cleanup-vscode-state.sh" 2>/dev/null || true
 fi
 
 if [ -f "$DOTFILES_DIR/scripts/reset-kombai.sh" ]; then
     bash "$DOTFILES_DIR/scripts/reset-kombai.sh" 2>/dev/null || true
+fi
+
+# NEW: Suppress all welcome screens and setup prompts
+if [ -f "$DOTFILES_DIR/scripts/suppress-welcome-screens.sh" ]; then
+    bash "$DOTFILES_DIR/scripts/suppress-welcome-screens.sh" 2>/dev/null || true
+    success "All welcome screens and setup prompts suppressed"
+else
+    log "⚠️  suppress-welcome-screens.sh not found (non-critical)"
 fi
 
 # Write visible summary to workspace
