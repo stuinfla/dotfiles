@@ -352,32 +352,69 @@ fi
 
 echo ""
 
-# Set up CONTINUOUS EXTENSION WATCHDOG
-# This watchdog runs AFTER you open the codespace, monitoring for 5 minutes
-# It checks every 10 seconds and removes unwanted extensions immediately
-log "🔧 Setting up extension watchdog..."
+# Start CONTINUOUS EXTENSION WATCHDOG
+# This watchdog starts NOW and monitors AFTER installation completes
+# It waits for extensions directory, then monitors for 5 minutes
+log "🔧 Starting extension watchdog (will run in background)..."
 
-# Make watchdog executable
-chmod +x "$HOME/.local/bin/extension-watchdog.sh" 2>/dev/null || warn "Watchdog script not found (will be available after symlinks)"
+# Start watchdog as truly detached background process
+# It will wait for extensions directory to appear, then monitor for 5 minutes
+setsid bash -c '
+    VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
+    LOG_FILE="/tmp/extension-watchdog.log"
 
-# Add one-time trigger to .bashrc that starts watchdog on first login
-if ! grep -q "EXTENSION_WATCHDOG_TRIGGER" "$HOME/.bashrc" 2>/dev/null; then
-    cat >> "$HOME/.bashrc" << 'WATCHDOG_TRIGGER'
+    echo "========================================" >> "$LOG_FILE"
+    echo "[$(date)] Watchdog started - waiting for extensions directory..." >> "$LOG_FILE"
+    echo "========================================" >> "$LOG_FILE"
 
-# EXTENSION WATCHDOG - Runs once on first login to monitor and remove unwanted extensions
-if [ -z "$EXTENSION_WATCHDOG_STARTED" ] && [ -f "$HOME/.local/bin/extension-watchdog.sh" ]; then
-    export EXTENSION_WATCHDOG_STARTED=1
-    echo "🔧 Starting extension watchdog (will monitor for 5 minutes)..."
-    setsid bash "$HOME/.local/bin/extension-watchdog.sh" </dev/null >/dev/null 2>&1 &
-    disown
-    # EXTENSION_WATCHDOG_TRIGGER (marker for detection)
-fi
-WATCHDOG_TRIGGER
+    # Wait up to 5 minutes for extensions directory to appear
+    for i in {1..300}; do
+        if [ -d "$VSCODE_EXT_DIR" ]; then
+            echo "[$(date)] Extensions directory found! Starting monitoring..." >> "$LOG_FILE"
+            break
+        fi
+        sleep 1
+    done
 
-    success "Extension watchdog configured in .bashrc"
-else
-    success "Extension watchdog already configured"
-fi
+    if [ ! -d "$VSCODE_EXT_DIR" ]; then
+        echo "[$(date)] Extensions directory never appeared" >> "$LOG_FILE"
+        exit 1
+    fi
+
+    # Now monitor for 5 minutes
+    START_TIME=$(date +%s)
+    REMOVAL_COUNT=0
+
+    for iteration in {1..30}; do
+        echo "[$(date)] Check $iteration/30" >> "$LOG_FILE"
+
+        # Remove Kombai
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -name "kombai.kombai-*" -exec rm -rf {} \; 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Kombai" >> "$LOG_FILE"
+            REMOVAL_COUNT=$((REMOVAL_COUNT + 1))
+        fi
+
+        # Remove Test Explorer
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -name "hbenl.vscode-test-explorer-*" -exec rm -rf {} \; 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Test Explorer" >> "$LOG_FILE"
+            REMOVAL_COUNT=$((REMOVAL_COUNT + 1))
+        fi
+
+        # Remove Cline
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -name "*claude-dev-*" -exec rm -rf {} \; 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Cline" >> "$LOG_FILE"
+            REMOVAL_COUNT=$((REMOVAL_COUNT + 1))
+        fi
+
+        sleep 10
+    done
+
+    echo "[$(date)] Watchdog completed - Removed $REMOVAL_COUNT extension(s)" >> "$LOG_FILE"
+    echo "========================================" >> "$LOG_FILE"
+' </dev/null >/dev/null 2>&1 &
+disown
+
+success "Extension watchdog started in background"
 
 echo ""
 
