@@ -271,10 +271,18 @@ if [ -d "$DOTFILES_DIR/.claude-flow" ]; then
     fi
 fi
 
-# Actively remove Cline extension if it's installed
+# Actively remove unwanted extensions
 if command -v code &> /dev/null; then
-    log "🔧 Removing Cline extension if installed..."
-    code --uninstall-extension saoudrizwan.claude-dev &>/dev/null && success "Removed Cline extension" || log "   Cline not installed or already removed"
+    log "🔧 Removing unwanted extensions..."
+
+    # Remove Cline (conflicts with Claude Code)
+    code --uninstall-extension saoudrizwan.claude-dev &>/dev/null && success "Removed Cline extension" || log "   Cline not installed"
+
+    # Remove Kombai (user doesn't want it)
+    code --uninstall-extension kombai.kombai &>/dev/null && success "Removed Kombai extension" || log "   Kombai not installed"
+
+    # Remove Test Explorer UI (causing unwanted popups)
+    code --uninstall-extension hbenl.vscode-test-explorer &>/dev/null && success "Removed Test Explorer UI" || log "   Test Explorer not installed"
 fi
 
 echo ""
