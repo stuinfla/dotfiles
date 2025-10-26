@@ -1,21 +1,75 @@
-# Stuart's Dotfiles
+# Stuart's Dotfiles - VibeCoding Setup
 
-Production-ready dotfiles for GitHub Codespaces with Claude Code + SuperClaude framework.
+**Automated AI-powered development environment for GitHub Codespaces**
 
-## 🚀 Quick Setup (3 Steps)
+**TL;DR:** One-click setup that automatically installs Claude Code, SuperClaude, Claude Flow, 5 MCP servers, and 11 VS Code extensions in 3-5 minutes. Saves 3+ hours of manual configuration every time you create a codespace.
 
-### 1. Fork This Repository
-Click the "Fork" button at the top of this page to create your own copy.
+---
 
-### 2. Enable Dotfiles in GitHub Codespaces
+## 🚀 Quick Setup (3 Steps - One Time Only!)
+
+### Step 1: Fork This Repo
+Click the "Fork" button at the top right of this page.
+
+### Step 2: Enable in Your GitHub Settings
 1. Go to [GitHub Codespaces Settings](https://github.com/settings/codespaces)
-2. Scroll to **"Dotfiles"** section
-3. Check ✅ **"Automatically install dotfiles"**
-4. Repository: `[your-username]/dotfiles`
-5. Click **"Save"**
+2. Under **"Dotfiles"** section:
+   - ✅ Check **"Automatically install dotfiles"**
+   - Repository: `YOUR-USERNAME/dotfiles` (your fork)
+3. Click **"Save"**
 
-### 3. Create a Codespace
-Create a codespace from **any repository** and your dotfiles will be automatically installed!
+### Step 3: Create a Codespace (On ANY Repo)
+1. Go to **any repository** you want to work on
+2. Click **Code** → **Codespaces** → **Create codespace**
+3. ☕ Wait 3-5 minutes while everything installs automatically
+4. Open terminal and type `dsp` to start coding with AI!
+
+**That's it!** Every new codespace you create will have this setup automatically. Set it once, use it forever.
+
+---
+
+## 📦 What Gets Installed Automatically (The Magic)
+
+### Complete Automated Installation
+
+| What You Get | What You DON'T Have to Do | Time Saved |
+|-------------|---------------------------|------------|
+| ✅ **16-core cloud computer** (or max for your account) | Buy expensive hardware | Hours + $$$ |
+| ✅ **Claude Code** (latest version) | Download, install, configure AI assistant | 15 min |
+| ✅ **SuperClaude** with `/sc:` commands | Set up advanced AI workflows | 20 min |
+| ✅ **Claude Flow** multi-agent system | Configure AI team orchestration | 30 min |
+| ✅ **5 MCP Servers** (GitHub, filesystem, playwright, etc.) | Install and configure each server | 45 min |
+| ✅ **11 VS Code Extensions** (Python, Jupyter, Office viewers, etc.) | Search, install, configure extensions | 30 min |
+| ✅ **DSP shortcut** - Type `dsp` to launch Claude | Type long commands every time | Every session |
+| ✅ **Status line** - Shows repo, files, context%, tokens, cores, memory | Guess resource usage | Always |
+| ✅ **Auto-updates** - Daily silent updates for all tools | Manually update weekly | 15 min/week |
+| ✅ **Auto-save** - Auto-commit/push every 5 minutes | Remember to save constantly | Every 5 min |
+| ✅ **Shutdown protection** - Saves uncommitted work | Lose work when closing | Data loss risk |
+| **TOTAL** | **Manual setup every time** | **3+ hours!** |
+
+### 🎯 Real-World Impact
+
+**Scenario 1 - New Project:**
+- ❌ Traditional: 3+ hours setting up before first line of code
+- ✅ VibeCoding: 5 minutes, then start coding with AI
+
+**Scenario 2 - Multiple Devices:**
+- ❌ Traditional: Configure laptop + desktop + tablet = 9+ hours
+- ✅ VibeCoding: Same environment on any device = 0 setup
+
+**Scenario 3 - Collaboration:**
+- ❌ Traditional: "Works on my machine" problems
+- ✅ VibeCoding: Everyone has identical environments
+
+**Scenario 4 - Maintenance:**
+- ❌ Traditional: Update tools manually = 13 hours/year
+- ✅ VibeCoding: Silent auto-updates = 0 hours/year
+
+**Scenario 5 - Data Loss:**
+- ❌ Traditional: Forget to save, lose hours of work
+- ✅ VibeCoding: Auto-save every 5 min = impossible to lose work
+
+---
 
 ## 📦 What's Included
 

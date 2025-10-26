@@ -1,318 +1,291 @@
 # ═══════════════════════════════════════════════════════════════════
-# GITHUB CODESPACES - DOTFILES CONFIGURATION
-# Updated: 2025-10-16 - Added session resume, optimizations, security fixes
+# CODESPACES BASHRC - Stuart's Development Environment
+# Auto-updates daily: Claude Code, SuperClaude, Claude Flow, VS Code
 # ═══════════════════════════════════════════════════════════════════
 
-# Ensure PATH includes npm global packages
-export PATH="$HOME/.npm-global/bin:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
-
 # ═══════════════════════════════════════════════════════════════════
-# CLAUDE CODE CONFIGURATION
+# DAILY AUTO-UPDATE SYSTEM (Silent Background Updates)
 # ═══════════════════════════════════════════════════════════════════
 
-# SESSION DIRECTORY - Not used with current Claude Code version
-# Claude Code 2.0.27+ does not support --session-dir option
-# Keeping directory for potential future use or manual session management
-export CLAUDE_SESSION_DIR="$HOME/.claude-sessions"
-mkdir -p "$CLAUDE_SESSION_DIR"
-
-# Remove any existing claude alias to ensure our function takes precedence
-unalias claude 2>/dev/null || true
-unalias dsp 2>/dev/null || true
-unalias DSP 2>/dev/null || true
-unalias dsb 2>/dev/null || true
-unalias DSB 2>/dev/null || true
-
-# Claude Code function - runs with --dangerously-skip-permissions
-# Using a function instead of alias for better reliability
-# Note: --session-dir removed as it's not supported in Claude Code 2.0.27+
-claude() {
-    command claude --dangerously-skip-permissions "$@"
-}
-export -f claude
-
-# Convenience aliases for dangerously-skip-permissions mode
-# All aliases work the same way: dsp, DSP, dsb, DSB
-alias dsp='claude'
-alias DSP='claude'
-alias dsb='claude'
-alias DSB='claude'
-
-# ═══════════════════════════════════════════════════════════════════
-# ENVIRONMENT VARIABLES & API KEYS
-# ═══════════════════════════════════════════════════════════════════
-
-# 🚨 CRITICAL AUTHENTICATION SEPARATION:
-#
-# Claude Code CLI Authentication:
-#   - Uses Claude Code Max subscription (via 'claude setup-token')
-#   - DOES NOT use ANTHROPIC_API_KEY (to avoid pay-per-token charges)
-#   - First-time setup: run 'dsp setup-token' and login with Claude.ai account
-#
-# Application API Access:
-#   - ANTHROPIC_API_KEY is available from GitHub Codespaces secrets
-#   - Applications can access it when needed for runtime operations
-#   - NOT exported to prevent Claude Code CLI from using it
-#
-# To access API key in your applications:
-#   - Use: $ANTHROPIC_API_KEY directly in your app code
-#   - GitHub Codespaces injects it as an environment variable
-#   - Configure at: https://github.com/settings/codespaces
-
-# Helper function to show API key for apps (debugging only)
-show_api_key() {
-    if [ -n "$ANTHROPIC_API_KEY" ]; then
-        echo "✅ ANTHROPIC_API_KEY is set (available for applications)"
-        echo "   First 10 chars: ${ANTHROPIC_API_KEY:0:10}..."
-    else
-        echo "❌ ANTHROPIC_API_KEY not set"
-        echo "   Configure at: https://github.com/settings/codespaces"
-    fi
-}
-
-# Note: We do NOT export ANTHROPIC_API_KEY here to prevent Claude Code CLI
-# from using it. Applications can still access it from the environment.
-
-# ═══════════════════════════════════════════════════════════════════
-# AUTO-UPDATE MECHANISM (WITH TIMEOUT PROTECTION - NEW!)
-# ═══════════════════════════════════════════════════════════════════
-
-# Auto-update function (runs once per day max, non-blocking)
-# NEW: Added timeout protection to prevent hangs
-auto_update_tools() {
-    local update_marker="$HOME/.cache/claude_tools_updated"
-    local update_log="$HOME/.cache/claude_update.log"
-    local current_date=$(date +%Y-%m-%d)
-    local timeout_seconds=300  # 5 minutes max for updates
-
-    # Create cache directory if it doesn't exist
-    mkdir -p "$HOME/.cache"
-
-    # Check if we've already updated today
-    if [ -f "$update_marker" ]; then
-        local last_update=$(cat "$update_marker" 2>/dev/null || echo "never")
-        if [ "$last_update" = "$current_date" ]; then
-            return 0
-        fi
-    fi
-
-    # Run updates in background silently (no user notification)
-    # Run updates in background to not block shell startup
-    {
-        echo "=== Update started at $(date) ===" > "$update_log"
-
-        # Update Claude Code (with timeout)
-        echo "Updating Claude Code..." >> "$update_log"
-        timeout $timeout_seconds npm update -g @anthropic-ai/claude-code@latest --force >> "$update_log" 2>&1 || echo "Claude Code update timed out or failed" >> "$update_log"
-
-        # Update SuperClaude (with timeout)
-        echo "Updating SuperClaude..." >> "$update_log"
-        if command -v pipx &> /dev/null; then
-            timeout $timeout_seconds pipx upgrade SuperClaude >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
-        else
-            timeout $timeout_seconds pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude >> "$update_log" 2>&1 || echo "SuperClaude update timed out or failed" >> "$update_log"
-        fi
-
-        # Update Claude Flow @alpha (with timeout)
-        echo "Updating Claude Flow @alpha..." >> "$update_log"
-        timeout $timeout_seconds npx claude-flow@alpha init --force >> "$update_log" 2>&1 || echo "Claude Flow update timed out or failed" >> "$update_log"
-
-        # Update MCP servers (with timeout for each)
-        echo "Updating MCP servers..." >> "$update_log"
-        timeout $timeout_seconds npm update -g mcp-installer@latest --force >> "$update_log" 2>&1
-        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-brave-search@latest --force >> "$update_log" 2>&1
-        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-github@latest --force >> "$update_log" 2>&1
-        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-filesystem@latest --force >> "$update_log" 2>&1
-        timeout $timeout_seconds npm update -g @playwright/mcp@latest --force >> "$update_log" 2>&1
-        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-sequential-thinking@latest --force >> "$update_log" 2>&1
-        timeout $timeout_seconds npm update -g @modelcontextprotocol/server-gdrive@latest --force >> "$update_log" 2>&1
-        timeout $timeout_seconds npm update -g @huggingface/mcp-server-huggingface@latest --force >> "$update_log" 2>&1
-        timeout $timeout_seconds pip install --break-system-packages --user --upgrade --force-reinstall mcp-server-fetch >> "$update_log" 2>&1
-
-        echo "=== Update completed at $(date) ===" >> "$update_log"
-
-        # Mark as updated today
-        echo "$current_date" > "$update_marker"
-
-        # Silent completion (no user notification)
-    } &
-
-    # Don't wait for background process
+# Run auto-update script in background (non-blocking, silent)
+if [ -f "$HOME/.dotfiles/scripts/auto-update.sh" ]; then
+    bash "$HOME/.dotfiles/scripts/auto-update.sh" &
     disown
-}
+elif [ -f "$HOME/dotfiles/scripts/auto-update.sh" ]; then
+    bash "$HOME/dotfiles/scripts/auto-update.sh" &
+    disown
+fi
 
-# Run auto-update only in Codespaces (not on local machine)
-if [ -n "$CODESPACES" ]; then
-    auto_update_tools
+# Run auto-git-save script in background (5-minute auto-commit/push)
+if [ -f "$HOME/.dotfiles/scripts/auto-git-save.sh" ]; then
+    bash "$HOME/.dotfiles/scripts/auto-git-save.sh" &
+    disown
+elif [ -f "$HOME/dotfiles/scripts/auto-git-save.sh" ]; then
+    bash "$HOME/dotfiles/scripts/auto-git-save.sh" &
+    disown
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# HELPFUL ALIASES & FUNCTIONS
+# CLAUDE CODE ALIASES
 # ═══════════════════════════════════════════════════════════════════
 
-# Quick command to check if secrets are loaded
-check_secrets() {
-    echo "Checking GitHub Codespaces Secrets..."
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    declare -a SECRETS=(
-        "ANTHROPIC_API_KEY"
-        "CLAUDE_API_KEY"
-        "BRAVE_API_KEY"
-        "OPENAI_API_KEY"
-        "GITHUB_ACCESS_TOKEN"
-        "GITHUB_TOKEN"
-        "GOOGLE_GEMINI_API_KEY"
-        "GROQ_API_KEY"
-        "GROK_AI_KEY"
-        "APIFY_KEY"
-        "GOOGLE_MAPS_API_KEY"
-        "IMGBB_API_KEY"
-        "NETLIFY_AUTH_TOKEN"
-        "HUGGINGFACE_API_KEY"
-    )
-
-    for secret in "${SECRETS[@]}"; do
-        if [ -n "${!secret}" ]; then
-            echo "✅ $secret is set"
-        else
-            echo "❌ $secret is NOT set"
-        fi
-    done
-
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "To add secrets: https://github.com/settings/codespaces"
+# DSP/dsp - Start Claude Code (skip permissions with ANTHROPIC_CLAUDE_CODE_SKIP_PERMISSIONS)
+# Supports /c flag for --continue
+dsp() {
+  if [ "$1" = "/c" ]; then
+    ANTHROPIC_CLAUDE_CODE_SKIP_PERMISSIONS=true claude --continue "${@:2}"
+  else
+    ANTHROPIC_CLAUDE_CODE_SKIP_PERMISSIONS=true claude "$@"
+  fi
 }
+DSP() { dsp "$@"; }
 
-# Quick command to check installed versions
-check_versions() {
-    echo "Installed Tool Versions:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "Claude Code: $(claude --version 2>/dev/null || echo 'Not installed')"
-    echo "SuperClaude: $(python3 -m SuperClaude --version 2>/dev/null || echo 'Not installed')"
-    echo "Claude Flow: $(npx --yes claude-flow@alpha --version 2>/dev/null || echo 'Not installed')"
-    echo "Node.js: $(node --version 2>/dev/null || echo 'Not installed')"
-    echo "Python: $(python3 --version 2>/dev/null || echo 'Not installed')"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-}
+# DSB/dsb - Start Claude Code in background
+dsb() { ANTHROPIC_CLAUDE_CODE_SKIP_PERMISSIONS=true claude "$@" & }
+DSB() { dsb "$@"; }
 
-# NEW: Check Claude session directory
-check_sessions() {
-    echo "Claude Sessions:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    if [ -d "$CLAUDE_SESSION_DIR" ]; then
-        echo "Session directory: $CLAUDE_SESSION_DIR"
-        echo "Sessions found: $(ls -1 "$CLAUDE_SESSION_DIR" 2>/dev/null | wc -l)"
-        echo ""
-        echo "Recent sessions:"
-        ls -lt "$CLAUDE_SESSION_DIR" 2>/dev/null | head -6
-    else
-        echo "No session directory found"
-    fi
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-}
+# ═══════════════════════════════════════════════════════════════════
+# AUTHENTICATION CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════
 
-# System status monitoring with resource usage
+# Claude Code CLI uses subscription (NOT pay-per-token)
+# Run 'dsp setup-token' once to authenticate with your Claude Code Max subscription
+# Applications use $ANTHROPIC_API_KEY from GitHub Codespaces Secrets
+
+# Make API key available to applications but NOT exported to Claude Code CLI
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+    # API key is available for apps to access via environment
+    # Do NOT export to Claude Code CLI to ensure it uses subscription
+    true
+fi
+
+# ═══════════════════════════════════════════════════════════════════
+# SESSION MANAGEMENT
+# ═══════════════════════════════════════════════════════════════════
+
+# Enable session resume (store sessions in ~/.claude-sessions)
+export CLAUDE_CODE_SESSION_DIR="$HOME/.claude-sessions"
+mkdir -p "$CLAUDE_CODE_SESSION_DIR"
+
+# ═══════════════════════════════════════════════════════════════════
+# HELPFUL COMMANDS
+# ═══════════════════════════════════════════════════════════════════
+
+# System status checker
 check_status() {
-    echo "System Status Monitor:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    # Repository information
-    if [ -n "$GITHUB_REPOSITORY" ]; then
-        local repo_name=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
-        echo "📁 Repository: $repo_name"
-    elif [ -d ".git" ]; then
-        local repo_name=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")
-        echo "📁 Repository: $repo_name"
-    else
-        echo "📁 Repository: Not in a git repository"
-    fi
-
-    # CPU information
-    local cpu_cores=$(nproc 2>/dev/null || echo "N/A")
-    local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 2>/dev/null || echo "N/A")
-    echo "💻 CPU Cores: $cpu_cores"
-    echo "⚡ CPU Usage: ${cpu_usage}%"
-
-    # Memory information
-    if command -v free >/dev/null 2>&1; then
-        local mem_total=$(free -h | awk '/^Mem:/ {print $2}')
-        local mem_used=$(free -h | awk '/^Mem:/ {print $3}')
-        local mem_percent=$(free | awk '/^Mem:/ {printf "%.1f", ($3/$2) * 100}')
-        echo "🧠 Memory: ${mem_used} / ${mem_total} (${mem_percent}%)"
-    else
-        echo "🧠 Memory: N/A"
-    fi
-
-    # Disk information
-    if [ -n "$CODESPACES" ]; then
-        local disk_usage=$(df -h /workspaces 2>/dev/null | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')
-        echo "💾 Disk: ${disk_usage}"
-    fi
-
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    # Note about Claude Code context
+    echo "════════════════════════════════════════════════════════════════"
+    echo "📊 SYSTEM STATUS"
+    echo "════════════════════════════════════════════════════════════════"
     echo ""
-    echo "💡 For Claude Code context window info:"
-    echo "   Use 'npx ccstatusline@latest' within Claude Code session"
-    echo "   Or check Claude Code's status bar in VS Code"
+
+    # Git repository info
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        echo "📁 Repository: $(basename "$(git rev-parse --show-toplevel)")"
+        echo "🌿 Branch: $(git branch --show-current)"
+        echo "📝 Status: $(git status --short | wc -l | tr -d ' ') files modified"
+    else
+        echo "📁 Not a git repository"
+    fi
+
+    echo ""
+
+    # Memory usage
+    echo "💾 Memory: $(free -h 2>/dev/null | awk '/^Mem:/ {print $3 " / " $2}' || echo 'N/A')"
+
+    # CPU load
+    echo "⚡ CPU Load: $(uptime | awk -F'load average:' '{print $2}' || echo 'N/A')"
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════"
 }
 
-# Rename Codespace to match repository name
+# Check API keys
+check_secrets() {
+    echo "════════════════════════════════════════════════════════════════"
+    echo "🔑 SECRETS CHECK"
+    echo "════════════════════════════════════════════════════════════════"
+    echo ""
+
+    if [ -n "$ANTHROPIC_API_KEY" ]; then
+        echo "✅ ANTHROPIC_API_KEY: Set (${#ANTHROPIC_API_KEY} chars)"
+    else
+        echo "❌ ANTHROPIC_API_KEY: Not set"
+    fi
+
+    if [ -n "$GITHUB_TOKEN" ]; then
+        echo "✅ GITHUB_TOKEN: Set (${#GITHUB_TOKEN} chars)"
+    elif [ -n "$GITHUB_ACCESS_TOKEN" ]; then
+        echo "✅ GITHUB_ACCESS_TOKEN: Set (${#GITHUB_ACCESS_TOKEN} chars)"
+    else
+        echo "❌ GITHUB_TOKEN: Not set"
+    fi
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════"
+}
+
+# Check tool versions
+check_versions() {
+    echo "════════════════════════════════════════════════════════════════"
+    echo "🔧 INSTALLED VERSIONS"
+    echo "════════════════════════════════════════════════════════════════"
+    echo ""
+
+    echo "Claude Code:"
+    claude --version 2>&1 | head -1 || echo "  Not installed"
+    echo ""
+
+    echo "SuperClaude:"
+    python3 -m SuperClaude --version 2>&1 | head -1 || echo "  Not installed"
+    echo ""
+
+    echo "Claude Flow:"
+    claude-flow --version 2>&1 | head -1 || echo "  Not installed"
+    echo ""
+
+    echo "Node.js:"
+    node --version 2>&1 || echo "  Not installed"
+    echo ""
+
+    echo "Python:"
+    python3 --version 2>&1 || echo "  Not installed"
+    echo ""
+
+    echo "════════════════════════════════════════════════════════════════"
+}
+
+# Check Claude sessions
+check_sessions() {
+    echo "════════════════════════════════════════════════════════════════"
+    echo "📁 CLAUDE CODE SESSIONS"
+    echo "════════════════════════════════════════════════════════════════"
+    echo ""
+
+    if [ -d "$CLAUDE_CODE_SESSION_DIR" ]; then
+        SESSION_COUNT=$(find "$CLAUDE_CODE_SESSION_DIR" -type f -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+        echo "Sessions directory: $CLAUDE_CODE_SESSION_DIR"
+        echo "Active sessions: $SESSION_COUNT"
+        echo ""
+
+        if [ "$SESSION_COUNT" -gt 0 ]; then
+            echo "Recent sessions:"
+            find "$CLAUDE_CODE_SESSION_DIR" -type f -name "*.json" -exec ls -lh {} \; | head -5
+        fi
+    else
+        echo "❌ Sessions directory not found"
+    fi
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════"
+}
+
+# Rename codespace to match repository
 rename-codespace() {
-    if [ -z "$CODESPACES" ]; then
-        echo "❌ Not running in a Codespace"
-        return 1
-    fi
+    if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME" ]; then
+        REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
 
-    local repo_name=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
-
-    if [ -z "$repo_name" ]; then
-        echo "❌ Could not detect repository name"
-        return 1
-    fi
-
-    if [ -z "$CODESPACE_NAME" ]; then
-        echo "❌ Could not detect Codespace name"
-        return 1
-    fi
-
-    echo "🏷️  Renaming Codespace..."
-    echo "   From: $CODESPACE_NAME"
-    echo "   To: $repo_name"
-
-    if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$repo_name" 2>/dev/null; then
-        echo "   ✅ Successfully renamed to: $repo_name"
+        if [ -n "$REPO_NAME" ]; then
+            echo "Renaming codespace to: $REPO_NAME"
+            gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$REPO_NAME"
+        else
+            echo "❌ Could not determine repository name"
+        fi
     else
-        echo "   ❌ Rename failed. Make sure gh CLI is authenticated."
-        return 1
+        echo "❌ Not running in GitHub Codespaces"
     fi
 }
 
-# Welcome message (only in Codespaces)
-if [ -n "$CODESPACES" ]; then
-    echo ""
-    echo "🚀 Codespace Ready!"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+# ═══════════════════════════════════════════════════════════════════
+# CODESPACE WELCOME MESSAGE
+# ═══════════════════════════════════════════════════════════════════
 
-    # Show repository and codespace info
-    if [ -n "$GITHUB_REPOSITORY" ]; then
-        REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
-        echo "📁 Repository: $REPO_NAME"
+# Show welcome message on first shell (only once)
+if [ -z "$CODESPACE_WELCOME_SHOWN" ]; then
+    export CODESPACE_WELCOME_SHOWN=1
+
+    if [ -n "$CODESPACES" ]; then
+        echo ""
+        echo "🚀 Codespace Ready!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+        if git rev-parse --git-dir > /dev/null 2>&1; then
+            REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
+            echo "📁 Repository: $REPO_NAME"
+        fi
+
+        echo "✅ Claude Code ready (type 'dsp' or 'claude' to start)"
+        echo "✅ MCP servers configured (Claude Flow + 4 essential)"
+        echo ""
+        echo "💡 Helpful commands:"
+        echo "   • dsp / claude      - Start Claude Code (skip permissions)"
+        echo "   • check_secrets     - Verify API keys are loaded"
+        echo "   • check_versions    - Show installed versions"
+        echo "   • check_sessions    - View Claude sessions"
+        echo "   • rename-codespace  - Rename to match repository"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
     fi
-
-    echo "✅ Claude Code ready (type 'dsp' or 'claude' to start)"
-    echo "✅ MCP servers configured (4 essential + 90+ via Claude Flow)"
-    echo ""
-    echo "💡 Helpful commands:"
-    echo "   • dsp / claude      - Start Claude Code (skip permissions)"
-    echo "   • check_status      - System monitor (repo, memory, CPU)"
-    echo "   • check_secrets     - Verify API keys are loaded"
-    echo "   • check_versions    - Show installed versions"
-    echo "   • check_sessions    - View Claude sessions"
-    echo "   • rename-codespace  - Rename to match repository"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
 fi
+
+# ═══════════════════════════════════════════════════════════════════
+# STANDARD BASHRC (Load system defaults)
+# ═══════════════════════════════════════════════════════════════════
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
+# Load system bashrc if it exists
+if [ -f /etc/bash.bashrc ]; then
+    . /etc/bash.bashrc
+fi
+
+# Enable bash completion
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+fi
+
+# History settings
+HISTCONTROL=ignoreboth
+HISTSIZE=1000
+HISTFILESIZE=2000
+shopt -s histappend
+
+# Check window size after each command
+shopt -s checkwinsize
+
+# Make less more friendly
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# Set a fancy prompt (non-color, unless we know we "want" color)
+case "$TERM" in
+    xterm-color|*-256color) color_prompt=yes;;
+esac
+
+if [ "$color_prompt" = yes ]; then
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+else
+    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+fi
+unset color_prompt
+
+# Enable color support
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+# Common aliases
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'

@@ -1,5 +1,5 @@
 {
-  "name": "16-Core Development Environment with Extension Control",
+  "name": "16-Core Development Environment",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
 
   // Request 16-core machine (premium GitHub account required)
@@ -9,7 +9,7 @@
     "storage": "128gb"
   },
 
-  // Basic features
+  // Basic features (customize as needed)
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:1": {
@@ -20,15 +20,25 @@
     }
   },
 
-  // VS Code customizations - CRITICAL for extension control
+  // VS Code customizations - Extension control
   "customizations": {
     "vscode": {
-      // Disable unwanted extensions
+      // Essential extensions only
       "extensions": [
-        // Kombai is allowed (not in this list)
+        "anthropic.claude-code",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "ms-toolsai.jupyter",
+        "cweijan.vscode-office",
+        "grapecity.gc-excelviewer",
+        "tomoki1207.pdf",
+        "shd101wyy.markdown-preview-enhanced",
+        "yzhang.markdown-all-in-one",
+        "eamodio.gitlens"
       ],
+      // Prevent unwanted extension behavior
       "settings": {
-        // Block specific extensions from auto-installing
         "extensions.autoCheckUpdates": false,
         "extensions.autoUpdate": false
       }
@@ -41,6 +51,9 @@
   // Run install script if using dotfiles
   // Use $DOTFILES environment variable (set by GitHub Codespaces) for correct path
   "postCreateCommand": "bash -c 'if [ -n \"$DOTFILES\" ] && [ -f \"$DOTFILES/install.sh\" ]; then timeout 900 bash \"$DOTFILES/install.sh\"; else echo \"No dotfiles found, skipping installation\"; fi'",
+
+  // Shutdown safety: warn and auto-save uncommitted changes
+  "postStopCommand": "bash -c 'if git status --porcelain | grep -q .; then echo \"⚠️ WARNING: Uncommitted changes detected! Auto-saving...\"; git add -A && git commit -m \"Auto-save on shutdown: $(date '+%Y-%m-%d %H:%M:%S')\" && git push || echo \"❌ Failed to push changes\"; else echo \"✅ No uncommitted changes\"; fi'",
 
   // Set user
   "remoteUser": "codespace"

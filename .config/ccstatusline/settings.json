@@ -1,0 +1,41 @@
+{
+  "statusLines": [
+    {
+      "name": "default",
+      "widgets": [
+        {
+          "type": "git-branch",
+          "color": "cyan",
+          "format": "📁 {branch}"
+        },
+        {
+          "type": "git-changes",
+          "color": "yellow",
+          "format": "📝 {files} files"
+        },
+        {
+          "type": "context-percentage",
+          "color": "green",
+          "format": "Context: {percentage}%"
+        },
+        {
+          "type": "token-usage",
+          "color": "blue",
+          "format": "Tokens: {total}"
+        },
+        {
+          "type": "custom-command",
+          "command": "nproc",
+          "color": "magenta",
+          "format": "🖥️ {output} cores"
+        },
+        {
+          "type": "custom-command",
+          "command": "free -h | awk '/^Mem:/ {print $3\"/\"$2}'",
+          "color": "red",
+          "format": "💾 {output}"
+        }
+      ]
+    }
+  ]
+}
