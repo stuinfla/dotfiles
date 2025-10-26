@@ -1,0 +1,57 @@
+{
+  // ═══════════════════════════════════════════════════════════════════
+  // VS CODE CONFIGURATION - SUPPRESS ALL WELCOME/SETUP SCREENS
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Disable ALL welcome screens and walkthroughs
+  "workbench.welcomePage.walkthroughs.openOnInstall": false,
+  "workbench.startupEditor": "none",
+  "workbench.tips.enabled": false,
+
+  // Disable extension welcome pages and getting started
+  "extensions.ignoreRecommendations": true,
+  "extensions.autoCheckUpdates": false,
+  "extensions.autoUpdate": false,
+  "gettingStarted.showOnStartup": false,
+
+  // Disable all prompts and notifications
+  "update.mode": "none",
+  "update.showReleaseNotes": false,
+  "telemetry.telemetryLevel": "off",
+  "workbench.enableExperiments": false,
+
+  // Disable specific extension welcome screens
+  "kombai.showWelcome": false,
+  "kombai.showGettingStarted": false,
+  "python.showStartPage": false,
+  "jupyter.showStartPage": false,
+  "gitlens.showWelcomeOnInstall": false,
+  "gitlens.showWhatsNewAfterUpgrades": false,
+
+  // Disable survey prompts
+  "workbench.survey.showSurvey": false,
+
+  // Disable tutorial/walkthrough overlays
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": false
+  },
+
+  // Clean editor on startup - no previews or popups
+  "workbench.editor.enablePreview": false,
+  "window.restoreWindows": "none",
+
+  // Disable all notification popups
+  "git.showPushSuccessNotification": false,
+  "extensions.showRecommendationsOnlyOnDemand": true,
+
+  // Make file explorer the default view (not welcome page)
+  "workbench.activityBar.visible": true,
+  "workbench.sideBar.location": "left",
+
+  // Terminal settings - clean and functional
+  "terminal.integrated.showExitAlert": false,
+  "terminal.integrated.confirmOnExit": "never",
+  "terminal.integrated.confirmOnKill": "never"
+}
