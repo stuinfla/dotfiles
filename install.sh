@@ -35,8 +35,9 @@ echo "DEBUG: PWD=$PWD" >> /tmp/dotfiles-startup.log
 > "$LOG_FILE"
 > "$PROGRESS_FILE"
 
-# Send stderr to log file but keep stdout visible
-exec 2>> "$LOG_FILE"
+# CRITICAL: Keep ALL output visible to user for transparency
+# We'll log errors manually in functions - do NOT redirect stderr
+# User MUST see installation progress in real-time
 
 clear  # Clear the terminal so user sees our messages
 
@@ -378,10 +379,10 @@ fi
 
 echo ""
 
-# Start AGGRESSIVE EXTENSION WATCHDOG
-# This watchdog runs for 10 MINUTES checking every 5 SECONDS
-# Extensions often install LATE, so we need longer monitoring
-log "🔧 Starting aggressive extension watchdog (10 min monitoring)..."
+# Start ULTRA-AGGRESSIVE EXTENSION WATCHDOG
+# This watchdog runs for 20 MINUTES checking every 3 SECONDS
+# Extensions often install LATE (5-10 min after codespace opens), so we need extended monitoring
+log "🔧 Starting ultra-aggressive extension watchdog (20 min monitoring)..."
 
 # Start watchdog as truly detached background process
 setsid bash -c '
@@ -389,7 +390,7 @@ setsid bash -c '
     LOG_FILE="/tmp/extension-watchdog.log"
 
     echo "========================================" >> "$LOG_FILE"
-    echo "[$(date)] AGGRESSIVE Watchdog started - 10 min monitoring, 5 sec checks" >> "$LOG_FILE"
+    echo "[$(date)] ULTRA-AGGRESSIVE Watchdog started - 20 min monitoring, 3 sec checks" >> "$LOG_FILE"
     echo "========================================" >> "$LOG_FILE"
 
     # Wait up to 2 minutes for extensions directory to appear
@@ -406,29 +407,29 @@ setsid bash -c '
         exit 1
     fi
 
-    # NOW MONITOR FOR 10 MINUTES (120 checks * 5 seconds)
+    # NOW MONITOR FOR 20 MINUTES (400 checks * 3 seconds)
     REMOVAL_COUNT=0
 
-    for iteration in {1..120}; do
-        echo "[$(date)] Check $iteration/120" >> "$LOG_FILE"
+    for iteration in {1..400}; do
+        echo "[$(date)] Check $iteration/400" >> "$LOG_FILE"
 
-        # Remove Kombai - try multiple patterns
+        # Remove Kombai - try multiple patterns (case-insensitive, comprehensive)
         REMOVED=0
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -iname "*kombai*" -exec rm -rf {} \; 2>/dev/null; then
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*kombai*" -o -iname "*komba*" \) -exec rm -rf {} \; 2>/dev/null; then
             echo "[$(date)] ✅ Removed Kombai" >> "$LOG_FILE"
             ((REMOVAL_COUNT++))
             REMOVED=1
         fi
 
-        # Remove Test Explorer - multiple patterns
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -iname "*test*explorer*" -exec rm -rf {} \; 2>/dev/null; then
+        # Remove Test Explorer - multiple patterns (hocklabs, littlefox, any test explorer)
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*test*explorer*" -o -iname "*hocklabs*" -o -iname "*littlefox*" \) -exec rm -rf {} \; 2>/dev/null; then
             echo "[$(date)] ✅ Removed Test Explorer" >> "$LOG_FILE"
             ((REMOVAL_COUNT++))
             REMOVED=1
         fi
 
-        # Remove Cline - multiple patterns
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -iname "*cline*" -o -iname "*claude-dev*" -exec rm -rf {} \; 2>/dev/null; then
+        # Remove Cline - multiple patterns (cline, claude-dev, saoud)
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*cline*" -o -iname "*claude-dev*" -o -iname "*saoud*" \) -exec rm -rf {} \; 2>/dev/null; then
             echo "[$(date)] ✅ Removed Cline" >> "$LOG_FILE"
             ((REMOVAL_COUNT++))
             REMOVED=1
@@ -439,15 +440,15 @@ setsid bash -c '
             echo "[$(date)] 🗑️  Total removals so far: $REMOVAL_COUNT" >> "$LOG_FILE"
         fi
 
-        sleep 5
+        sleep 3
     done
 
-    echo "[$(date)] Watchdog completed - Removed $REMOVAL_COUNT extension(s) over 10 minutes" >> "$LOG_FILE"
+    echo "[$(date)] Watchdog completed - Removed $REMOVAL_COUNT extension(s) over 20 minutes" >> "$LOG_FILE"
     echo "========================================" >> "$LOG_FILE"
 ' </dev/null >/dev/null 2>&1 &
 disown
 
-success "Aggressive extension watchdog started (10 min, 5 sec checks)"
+success "Ultra-aggressive extension watchdog started (20 min, 3 sec checks)"
 
 echo ""
 
@@ -803,7 +804,7 @@ MCP_COUNT=$(grep -c '"command"' "$HOME/.claude.json" 2>/dev/null || echo "0")
 echo "  ✅ MCP Servers:        $MCP_COUNT configured"
 
 # Extension watchdog
-echo "  ✅ Extension Watchdog: Running (removes Kombai/TestExplorer/Cline)"
+echo "  ✅ Extension Watchdog: Running for 20 min (removes Kombai/TestExplorer/Cline)"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
