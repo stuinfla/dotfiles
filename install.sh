@@ -54,10 +54,8 @@ echo "   • MCP Servers - Advanced tool integrations"
 echo "   • Development tools - git aliases, shell improvements"
 echo "   • Extension watchdog - Keeps unwanted extensions away"
 echo ""
-echo "⏱️  Expected time: 3-5 minutes"
-echo ""
-echo "💡 What's happening: This runs ONCE when creating a new codespace."
-echo "   Your workspace will be ready soon - grab a coffee! ☕"
+echo "💡 This runs ONCE when creating a new codespace."
+echo "   Follow the checkmarks below to track progress!"
 echo ""
 echo "════════════════════════════════════════════════════════════════════"
 echo ""
@@ -225,8 +223,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 1/5: Setting up shell configuration                        ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "📝 Copying .bashrc, git config, and development aliases..."
-echo "   (These customize your terminal and git commands)"
+echo "📝 Copying shell configuration and git settings..."
 echo ""
 
 # Copy .bashrc FIRST (critical for shell aliases)
@@ -298,16 +295,9 @@ echo "╔═══════════════════════�
 echo "║  STEP 2/5: Installing AI development tools                       ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🤖 Installing Claude Code CLI - Your AI coding assistant"
-echo "   (Latest version from NPM, includes MCP support)"
-echo ""
-echo "⚡ Installing SuperClaude - Enhanced Claude capabilities"
-echo "   (Framework for advanced AI workflows)"
-echo ""
-echo "🌊 Installing Claude Flow @alpha - 90+ advanced tools"
-echo "   (MCP server with swarm orchestration)"
-echo ""
-echo "⏱️  This step takes ~2-3 minutes (downloading and installing packages)"
+echo "🤖 Installing Claude Code CLI..."
+echo "⚡ Installing SuperClaude..."
+echo "🌊 Installing Claude Flow @alpha..."
 echo ""
 
 # Install Claude Code with visible progress
@@ -461,16 +451,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 3/5: Installing MCP servers (parallel)                     ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🔌 Installing 4 essential MCP servers:"
-echo "   • GitHub MCP - Repository access and API tools"
-echo "   • Filesystem MCP - Safe file operations"
-echo "   • Playwright MCP - Browser automation and testing"
-echo "   • Sequential Thinking MCP - Advanced reasoning"
-echo ""
-echo "💡 Note: Claude Flow provides 90+ additional MCP servers"
-echo "   (These 4 are installed for faster startup)"
-echo ""
-echo "⏱️  Installing in parallel - ~1-2 minutes"
+echo "🔌 Installing essential MCP servers..."
 echo ""
 
 # Create temporary directory for installation logs
@@ -564,13 +545,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 4/5: Verifying installation                                ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "✅ Checking installed tools and configurations:"
-echo "   • Claude Code version and availability"
-echo "   • SuperClaude installation status"
-echo "   • MCP server configuration (.claude.json)"
-echo "   • Extension watchdog (background process)"
-echo ""
-echo "⏱️  Quick verification - ~30 seconds"
+echo "✅ Verifying installation..."
 echo ""
 
 PASS_COUNT=0
@@ -631,10 +606,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 5/5: Finalizing setup                                      ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🏷️  Auto-renaming codespace to match your repository name"
-echo "   (Makes it easier to identify in GitHub Codespaces list)"
-echo ""
-echo "⏱️  Final step - ~10 seconds"
+echo "🏷️  Finalizing codespace setup..."
 echo ""
 
 if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME" ]; then
@@ -831,8 +803,18 @@ kill $SCRIPT_TIMEOUT_PID 2>/dev/null || true
 mkdir -p ~/.cache
 touch ~/.cache/dotfiles_just_installed
 
-echo "🔄 Restarting terminal with clean environment in 2 seconds..."
+echo "🔄 Restarting terminal to activate all configurations..."
 echo ""
+
+# Mark installation as complete - .bashrc will show welcome message
+mkdir -p ~/.cache
+touch ~/.cache/dotfiles_just_installed
+
+# Store installation summary for welcome message
+cat > ~/.cache/dotfiles_summary <<EOF
+PASS_COUNT=$PASS_COUNT
+FAIL_COUNT=$FAIL_COUNT
+EOF
 
 # Mark installation as complete in visible status file
 cat >> "$VISIBLE_STATUS_FILE" <<EOF
@@ -843,28 +825,17 @@ cat >> "$VISIBLE_STATUS_FILE" <<EOF
 
 Completed at: $(date)
 
-✅ Passed:  $PASS_COUNT checks
-❌ Failed:  $FAIL_COUNT checks
-
-🎉 Your codespace is ready!
-
-To activate DSP alias:
-  source ~/.bashrc
-
-Then you can use:
-  dsp               # Start Claude Code
-  dsp --version     # Verify installation
-  check_versions    # Show all installed tools
-
-This file will auto-delete when you close this codespace.
+Terminal will restart momentarily with a clean environment.
+Your installation summary will appear in the new terminal.
 
 ════════════════════════════════════════════════════════════════════
 EOF
 
-sleep 2
+sleep 1
 
 # Automatically restart terminal with fresh environment
 # This ensures DSP alias and all configurations are fully loaded
+# .bashrc will detect first-run and show welcome message
 exec bash
 
 # Clean up temp log directory if installation was successful

@@ -4,6 +4,82 @@
 # ═══════════════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════════════
+# FIRST-RUN WELCOME MESSAGE (After dotfiles installation)
+# ═══════════════════════════════════════════════════════════════════
+
+if [ -f "$HOME/.cache/dotfiles_just_installed" ]; then
+    clear
+
+    # Load installation summary
+    if [ -f "$HOME/.cache/dotfiles_summary" ]; then
+        source "$HOME/.cache/dotfiles_summary"
+    else
+        PASS_COUNT="N/A"
+        FAIL_COUNT="0"
+    fi
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════════╗"
+    echo "║                                                                   ║"
+    echo "║        🎉  YOUR CODESPACE IS READY!  🎉                           ║"
+    echo "║                                                                   ║"
+    echo "╚═══════════════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "✅ INSTALLED & CONFIGURED:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Show versions with checkmarks
+    if command -v claude &> /dev/null; then
+        CLAUDE_VERSION=$(claude --version 2>/dev/null | head -1 || echo "installed")
+        echo "  ✅ Claude Code:        $CLAUDE_VERSION"
+    fi
+
+    if python3 -m SuperClaude --version &> /dev/null 2>&1; then
+        SC_VERSION=$(python3 -m SuperClaude --version 2>/dev/null | head -1 || echo "installed")
+        echo "  ✅ SuperClaude:        $SC_VERSION"
+    fi
+
+    if command -v claude-flow &> /dev/null; then
+        CF_VERSION=$(claude-flow --version 2>/dev/null | head -1 || echo "installed")
+        echo "  ✅ Claude Flow:        $CF_VERSION"
+    fi
+
+    MCP_COUNT=$(grep -c '"command"' "$HOME/.claude.json" 2>/dev/null || echo "0")
+    echo "  ✅ MCP Servers:        $MCP_COUNT configured"
+    echo "  ✅ Extension Watchdog: Running for 20 min"
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "📋 QUICK START:"
+    echo ""
+    echo "  dsp                 ← Start Claude Code now!"
+    echo "  dsp --version       ← Verify installation"
+    echo "  check_versions      ← Show all tool versions"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "⚠️  IMPORTANT REMINDER:"
+    echo ""
+    echo "  📌 This is a GitHub Codespace - changes are NOT auto-saved!"
+    echo "  📌 Remember to commit and push your work regularly:"
+    echo ""
+    echo "     git add ."
+    echo "     git commit -m \"Your message\""
+    echo "     git push"
+    echo ""
+    echo "  💡 TIP: Commit after completing each chunk of work"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Clean up flag files
+    rm -f "$HOME/.cache/dotfiles_just_installed"
+    rm -f "$HOME/.cache/dotfiles_summary"
+fi
+
+# ═══════════════════════════════════════════════════════════════════
 # DAILY AUTO-UPDATE SYSTEM (Silent Background Updates)
 # ═══════════════════════════════════════════════════════════════════
 
