@@ -1,0 +1,26 @@
+# Backup files
+*.backup
+.dotfiles.backup/
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+playwright-test-screenshots/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
