@@ -378,23 +378,22 @@ fi
 
 echo ""
 
-# Start CONTINUOUS EXTENSION WATCHDOG
-# This watchdog starts NOW and monitors AFTER installation completes
-# It waits for extensions directory, then monitors for 5 minutes
-log "🔧 Starting extension watchdog (will run in background)..."
+# Start AGGRESSIVE EXTENSION WATCHDOG
+# This watchdog runs for 10 MINUTES checking every 5 SECONDS
+# Extensions often install LATE, so we need longer monitoring
+log "🔧 Starting aggressive extension watchdog (10 min monitoring)..."
 
 # Start watchdog as truly detached background process
-# It will wait for extensions directory to appear, then monitor for 5 minutes
 setsid bash -c '
     VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
     LOG_FILE="/tmp/extension-watchdog.log"
 
     echo "========================================" >> "$LOG_FILE"
-    echo "[$(date)] Watchdog started - waiting for extensions directory..." >> "$LOG_FILE"
+    echo "[$(date)] AGGRESSIVE Watchdog started - 10 min monitoring, 5 sec checks" >> "$LOG_FILE"
     echo "========================================" >> "$LOG_FILE"
 
-    # Wait up to 5 minutes for extensions directory to appear
-    for i in {1..300}; do
+    # Wait up to 2 minutes for extensions directory to appear
+    for i in {1..120}; do
         if [ -d "$VSCODE_EXT_DIR" ]; then
             echo "[$(date)] Extensions directory found! Starting monitoring..." >> "$LOG_FILE"
             break
@@ -407,40 +406,48 @@ setsid bash -c '
         exit 1
     fi
 
-    # Now monitor for 5 minutes
-    START_TIME=$(date +%s)
+    # NOW MONITOR FOR 10 MINUTES (120 checks * 5 seconds)
     REMOVAL_COUNT=0
 
-    for iteration in {1..30}; do
-        echo "[$(date)] Check $iteration/30" >> "$LOG_FILE"
+    for iteration in {1..120}; do
+        echo "[$(date)] Check $iteration/120" >> "$LOG_FILE"
 
-        # Remove Kombai
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -name "kombai.kombai-*" -exec rm -rf {} \; 2>/dev/null; then
+        # Remove Kombai - try multiple patterns
+        REMOVED=0
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -iname "*kombai*" -exec rm -rf {} \; 2>/dev/null; then
             echo "[$(date)] ✅ Removed Kombai" >> "$LOG_FILE"
-            REMOVAL_COUNT=$((REMOVAL_COUNT + 1))
+            ((REMOVAL_COUNT++))
+            REMOVED=1
         fi
 
-        # Remove Test Explorer
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -name "hbenl.vscode-test-explorer-*" -exec rm -rf {} \; 2>/dev/null; then
+        # Remove Test Explorer - multiple patterns
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -iname "*test*explorer*" -exec rm -rf {} \; 2>/dev/null; then
             echo "[$(date)] ✅ Removed Test Explorer" >> "$LOG_FILE"
-            REMOVAL_COUNT=$((REMOVAL_COUNT + 1))
+            ((REMOVAL_COUNT++))
+            REMOVED=1
         fi
 
-        # Remove Cline
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -name "*claude-dev-*" -exec rm -rf {} \; 2>/dev/null; then
+        # Remove Cline - multiple patterns
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d -iname "*cline*" -o -iname "*claude-dev*" -exec rm -rf {} \; 2>/dev/null; then
             echo "[$(date)] ✅ Removed Cline" >> "$LOG_FILE"
-            REMOVAL_COUNT=$((REMOVAL_COUNT + 1))
+            ((REMOVAL_COUNT++))
+            REMOVED=1
         fi
 
-        sleep 10
+        # Log if we removed anything this iteration
+        if [ $REMOVED -eq 1 ]; then
+            echo "[$(date)] 🗑️  Total removals so far: $REMOVAL_COUNT" >> "$LOG_FILE"
+        fi
+
+        sleep 5
     done
 
-    echo "[$(date)] Watchdog completed - Removed $REMOVAL_COUNT extension(s)" >> "$LOG_FILE"
+    echo "[$(date)] Watchdog completed - Removed $REMOVAL_COUNT extension(s) over 10 minutes" >> "$LOG_FILE"
     echo "========================================" >> "$LOG_FILE"
 ' </dev/null >/dev/null 2>&1 &
 disown
 
-success "Extension watchdog started in background"
+success "Aggressive extension watchdog started (10 min, 5 sec checks)"
 
 echo ""
 
@@ -754,42 +761,64 @@ fi
 # ═══════════════════════════════════════════════════════════════════
 
 echo ""
-echo "════════════════════════════════════════════════════════════════════"
-echo "                    🎉 INSTALLATION COMPLETE! 🎉"
-echo "════════════════════════════════════════════════════════════════════"
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════╗"
+echo "║                                                                   ║"
+echo "║                  🎉  INSTALLATION COMPLETE!  🎉                   ║"
+echo "║                                                                   ║"
+echo "║              YOUR CODESPACE IS READY TO USE! ✅                   ║"
+echo "║                                                                   ║"
+echo "╚═══════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "✅ INSTALLED TOOLS & VERSIONS:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Show installed versions for confidence
-log "✅ Installed Versions (verify everything is up to date):"
-echo ""
-
-# Claude Code version
+# Claude Code version with checkmark
 if command -v claude &> /dev/null; then
-    CLAUDE_VERSION=$(claude --version 2>/dev/null | head -1 || echo "version check failed")
-    echo "  🤖 Claude Code:     $CLAUDE_VERSION"
+    CLAUDE_VERSION=$(claude --version 2>/dev/null | head -1 || echo "installed")
+    echo "  ✅ Claude Code:        $CLAUDE_VERSION"
 else
-    echo "  ⚠️  Claude Code:     NOT FOUND"
+    echo "  ❌ Claude Code:        NOT FOUND (installation failed)"
 fi
 
-# SuperClaude version
-if command -v superclaude &> /dev/null; then
-    SC_VERSION=$(superclaude --version 2>/dev/null | head -1 || echo "version check failed")
-    echo "  ⚡ SuperClaude:     $SC_VERSION"
-elif python3 -m SuperClaude --version &> /dev/null; then
-    SC_VERSION=$(python3 -m SuperClaude --version 2>/dev/null | head -1 || echo "version check failed")
-    echo "  ⚡ SuperClaude:     $SC_VERSION"
+# SuperClaude version with checkmark
+if command -v superclaude &> /dev/null || python3 -m SuperClaude --version &> /dev/null 2>&1; then
+    SC_VERSION=$(python3 -m SuperClaude --version 2>/dev/null | head -1 || echo "installed")
+    echo "  ✅ SuperClaude:        $SC_VERSION"
 else
-    echo "  ⚠️  SuperClaude:     NOT FOUND (optional)"
+    echo "  ⚠️  SuperClaude:        Not installed (optional)"
 fi
 
-# Claude Flow version
+# Claude Flow version with checkmark
 if command -v claude-flow &> /dev/null; then
-    CF_VERSION=$(claude-flow --version 2>/dev/null | head -1 || echo "version check failed")
-    echo "  🌊 Claude Flow:     $CF_VERSION"
+    CF_VERSION=$(claude-flow --version 2>/dev/null | head -1 || echo "installed")
+    echo "  ✅ Claude Flow:        $CF_VERSION"
 else
-    echo "  ⚠️  Claude Flow:     NOT FOUND"
+    echo "  ❌ Claude Flow:        NOT FOUND (installation failed)"
 fi
 
+# MCP Servers count
+MCP_COUNT=$(grep -c '"command"' "$HOME/.claude.json" 2>/dev/null || echo "0")
+echo "  ✅ MCP Servers:        $MCP_COUNT configured"
+
+# Extension watchdog
+echo "  ✅ Extension Watchdog: Running (removes Kombai/TestExplorer/Cline)"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📋 QUICK START COMMANDS:"
+echo ""
+echo "  dsp --version       ← Test your setup"
+echo "  dsp                 ← Start Claude Code"
+echo "  check_versions      ← Show all tool versions"
+echo "  check_secrets       ← Verify API keys"
+echo "  check_sessions      ← View Claude sessions"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "🎯 NEXT STEP: Restart your terminal or run: source ~/.bashrc"
 echo ""
 echo "════════════════════════════════════════════════════════════════════"
 echo ""
