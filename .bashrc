@@ -416,3 +416,17 @@ alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
+# ═══════════════════════════════════════════════════════════════════
+# SOURCE ADDITIONAL BASH CONFIGURATION FROM .bashrc.d/
+# Load all .sh files from ~/.bashrc.d/ directory
+# ═══════════════════════════════════════════════════════════════════
+
+if [ -d ~/.bashrc.d ]; then
+    for rc in ~/.bashrc.d/*.sh; do
+        if [ -f "$rc" ]; then
+            . "$rc"
+        fi
+    done
+    unset rc
+fi
