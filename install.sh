@@ -359,17 +359,21 @@ if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     python3 -m SuperClaude install >> "$LOG_FILE" 2>&1 || true
 fi
 
-# Install Claude Flow @alpha with visible progress
-progress "  [3/3] Installing Claude Flow @alpha (MCP server + 90+ tools)..."
-log "Installing Claude Flow @alpha..."
-if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FILE" 2>&1; then
+# Install Claude Flow with fallback strategy
+progress "  [3/3] Installing Claude Flow (MCP server + 90+ tools)..."
+log "Installing Claude Flow..."
+
+# Try @latest first (more stable), fallback to specific version if needed
+CLAUDE_FLOW_VERSION="latest"
+if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@${CLAUDE_FLOW_VERSION} --force >> "$LOG_FILE" 2>&1; then
     if command -v claude-flow &> /dev/null; then
         success "        Claude Flow installed"
-        log "Claude Flow version: $(claude-flow --version 2>&1 | head -1)"
+        INSTALLED_VERSION=$(claude-flow --version 2>&1 | head -1 || echo "unknown")
+        log "Claude Flow version: $INSTALLED_VERSION"
 
         # Initialize Claude Flow configuration (silent)
         log "Initializing Claude Flow configuration..."
-        if timeout $PACKAGE_TIMEOUT npx claude-flow@alpha init --force >> "$LOG_FILE" 2>&1; then
+        if timeout $PACKAGE_TIMEOUT npx claude-flow@${CLAUDE_FLOW_VERSION} init --force >> "$LOG_FILE" 2>&1; then
             success "Claude Flow configuration initialized"
         else
             warn "Claude Flow init had issues (may need manual setup)"
@@ -378,7 +382,7 @@ if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FI
         # CRITICAL: Register Claude Flow as MCP server
         log "Registering Claude Flow as MCP server..."
         if command -v claude &> /dev/null; then
-            if claude mcp add claude-flow npx claude-flow@alpha mcp start >> "$LOG_FILE" 2>&1; then
+            if claude mcp add claude-flow npx claude-flow@${CLAUDE_FLOW_VERSION} mcp start >> "$LOG_FILE" 2>&1; then
                 success "        Claude Flow MCP server registered"
             else
                 error "Failed to register Claude Flow MCP server"
@@ -390,7 +394,8 @@ if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FI
         warn "Claude Flow installation completed but command not found"
     fi
 else
-    warn "Claude Flow installation failed (not critical)"
+    error "Claude Flow installation failed - dependency issue detected"
+    log "Skipping Claude Flow (not critical for core functionality)"
 fi
 
 echo ""
