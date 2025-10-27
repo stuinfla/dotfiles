@@ -88,6 +88,19 @@ PROGRESS LOG:
 EOF
 
 # ═══════════════════════════════════════════════════════════════════
+# INITIALIZE STATUS FILE FOR BASHRC DISPLAY
+# ═══════════════════════════════════════════════════════════════════
+
+# Create status file that .bashrc will read to show progress
+STATUS_FILE="$HOME/.dotfiles-status"
+START_TIME=$(date +%s)
+
+cat > "$STATUS_FILE" <<STATUSEOF
+start:${START_TIME}
+step:0:Initializing
+STATUSEOF
+
+# ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════
 
@@ -145,6 +158,17 @@ warn() {
     echo -e "${YELLOW}⚠️  $*${NC}"
     echo "[$(date +'%H:%M:%S')] ⚠️ $*" >> "$PROGRESS_FILE"
     echo "[$(date +'%H:%M:%S')] ⚠️ $*" >> "$VISIBLE_STATUS_FILE"
+}
+
+# Update status file for .bashrc to display progress
+update_status() {
+    local step_num="$1"
+    local step_desc="$2"
+
+    cat > "$STATUS_FILE" <<STATUSEOF
+start:${START_TIME}
+step:${step_num}:${step_desc}
+STATUSEOF
 }
 
 # Cleanup function for timeouts
@@ -223,6 +247,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 1/5: Setting up shell configuration                        ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
+update_status "1" "Setting up shell configuration"
 echo "📝 Copying shell configuration and git settings..."
 echo ""
 
@@ -295,6 +320,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 2/5: Installing AI development tools                       ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
+update_status "2" "Installing AI development tools"
 echo "🤖 Installing Claude Code CLI..."
 echo "⚡ Installing SuperClaude..."
 echo "🌊 Installing Claude Flow @alpha..."
@@ -369,76 +395,20 @@ fi
 
 echo ""
 
-# Start ULTRA-AGGRESSIVE EXTENSION WATCHDOG
-# This watchdog runs for 20 MINUTES checking every 3 SECONDS
-# Extensions often install LATE (5-10 min after codespace opens), so we need extended monitoring
-log "🔧 Starting ultra-aggressive extension watchdog (20 min monitoring)..."
+# ONE-TIME EXTENSION CLEANUP (Simple approach - no continuous monitoring)
+# devcontainer.json has ignoredRecommendations to prevent reinstall
+log "🔧 Performing one-time extension cleanup..."
 
-# Start watchdog as truly detached background process
-setsid bash -c '
-    VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
-    LOG_FILE="/tmp/extension-watchdog.log"
-
-    echo "========================================" >> "$LOG_FILE"
-    echo "[$(date)] ULTRA-AGGRESSIVE Watchdog started - 20 min monitoring, 3 sec checks" >> "$LOG_FILE"
-    echo "========================================" >> "$LOG_FILE"
-
-    # Wait up to 2 minutes for extensions directory to appear
-    for i in {1..120}; do
-        if [ -d "$VSCODE_EXT_DIR" ]; then
-            echo "[$(date)] Extensions directory found! Starting monitoring..." >> "$LOG_FILE"
-            break
-        fi
-        sleep 1
-    done
-
-    if [ ! -d "$VSCODE_EXT_DIR" ]; then
-        echo "[$(date)] Extensions directory never appeared" >> "$LOG_FILE"
-        exit 1
-    fi
-
-    # NOW MONITOR FOR 20 MINUTES (400 checks * 3 seconds)
-    REMOVAL_COUNT=0
-
-    for iteration in {1..400}; do
-        echo "[$(date)] Check $iteration/400" >> "$LOG_FILE"
-
-        # Remove Kombai - try multiple patterns (case-insensitive, comprehensive)
-        REMOVED=0
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*kombai*" -o -iname "*komba*" \) -exec rm -rf {} \; 2>/dev/null; then
-            echo "[$(date)] ✅ Removed Kombai" >> "$LOG_FILE"
-            ((REMOVAL_COUNT++))
-            REMOVED=1
-        fi
-
-        # Remove Test Explorer - multiple patterns (hocklabs, littlefox, any test explorer)
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*test*explorer*" -o -iname "*hocklabs*" -o -iname "*littlefox*" \) -exec rm -rf {} \; 2>/dev/null; then
-            echo "[$(date)] ✅ Removed Test Explorer" >> "$LOG_FILE"
-            ((REMOVAL_COUNT++))
-            REMOVED=1
-        fi
-
-        # Remove Cline - multiple patterns (cline, claude-dev, saoud)
-        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*cline*" -o -iname "*claude-dev*" -o -iname "*saoud*" \) -exec rm -rf {} \; 2>/dev/null; then
-            echo "[$(date)] ✅ Removed Cline" >> "$LOG_FILE"
-            ((REMOVAL_COUNT++))
-            REMOVED=1
-        fi
-
-        # Log if we removed anything this iteration
-        if [ $REMOVED -eq 1 ]; then
-            echo "[$(date)] 🗑️  Total removals so far: $REMOVAL_COUNT" >> "$LOG_FILE"
-        fi
-
-        sleep 3
-    done
-
-    echo "[$(date)] Watchdog completed - Removed $REMOVAL_COUNT extension(s) over 20 minutes" >> "$LOG_FILE"
-    echo "========================================" >> "$LOG_FILE"
-' </dev/null >/dev/null 2>&1 &
-disown
-
-success "Ultra-aggressive extension watchdog started (20 min, 3 sec checks)"
+VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
+if [ -d "$VSCODE_EXT_DIR" ]; then
+    # Remove unwanted extensions if they exist
+    find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*kombai*" -o -iname "*komba*" \) -exec rm -rf {} \; 2>/dev/null
+    find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*test*explorer*" -o -iname "*hocklabs*" -o -iname "*littlefox*" \) -exec rm -rf {} \; 2>/dev/null
+    find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*cline*" -o -iname "*claude-dev*" -o -iname "*saoud*" \) -exec rm -rf {} \; 2>/dev/null
+    success "One-time extension cleanup complete"
+else
+    log "Extensions directory not found yet (will be cleaned by devcontainer settings)"
+fi
 
 echo ""
 
@@ -451,6 +421,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 3/5: Installing MCP servers (parallel)                     ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
+update_status "3" "Installing MCP servers"
 echo "🔌 Installing essential MCP servers..."
 echo ""
 
@@ -545,6 +516,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 4/5: Verifying installation                                ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
+update_status "4" "Verifying installation"
 echo "✅ Verifying installation..."
 echo ""
 
@@ -606,6 +578,7 @@ echo "╔═══════════════════════�
 echo "║  STEP 5/5: Finalizing setup                                      ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
+update_status "5" "Finalizing setup"
 echo "🏷️  Finalizing codespace setup..."
 echo ""
 
@@ -831,11 +804,18 @@ Your installation summary will appear in the new terminal.
 ════════════════════════════════════════════════════════════════════
 EOF
 
+# Mark installation as COMPLETE in status file
+COMPLETE_TIME=$(date +%s)
+cat > "$STATUS_FILE" <<STATUSEOF
+start:${START_TIME}
+step:5:Complete:${COMPLETE_TIME}
+STATUSEOF
+
 sleep 1
 
 # Automatically restart terminal with fresh environment
 # This ensures DSP alias and all configurations are fully loaded
-# .bashrc will detect first-run and show welcome message
+# .bashrc will detect first-run and show welcome message with completion status
 exec bash
 
 # Clean up temp log directory if installation was successful
@@ -857,4 +837,3 @@ else
     error "❌ Critical components missing - exiting with failure code"
     exit 1
 fi
-

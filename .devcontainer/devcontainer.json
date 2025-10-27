@@ -105,11 +105,8 @@
   // Run install script if using dotfiles
   // Use $DOTFILES environment variable (set by GitHub Codespaces) for correct path
   // CRITICAL: postCreateCommand runs BEFORE terminal is available - output goes to creation log
-  // Status file will be created and automatically opened so user can watch progress
-  "postCreateCommand": "bash -c 'if [ -n \"$DOTFILES\" ] && [ -f \"$DOTFILES/install.sh\" ]; then timeout 900 bash \"$DOTFILES/install.sh\" 2>&1 | tee /tmp/dotfiles-install-output.log; else echo \"No dotfiles found, skipping installation\"; fi'",
-
-  // SOLUTION: Auto-open status file when codespace starts so user can see progress
-  "postStartCommand": "bash -c 'STATUS_FILE=$(find /workspaces -maxdepth 2 -name \"DOTFILES-INSTALLATION-STATUS.txt\" -o -name \"dotfiles-install-output.log\" 2>/dev/null | head -1); if [ -n \"$STATUS_FILE\" ]; then echo \"\\n╔═══════════════════════════════════════════════════════════════════╗\"; echo \"║  📋 Dotfiles Installation Status (auto-opening in editor)        ║\"; echo \"╚═══════════════════════════════════════════════════════════════════╝\"; sleep 2; code \"$STATUS_FILE\"; fi'",
+  // SOLUTION: install.sh writes status to ~/.dotfiles-status, .bashrc displays it when terminal opens
+  "postCreateCommand": "bash -c 'if [ -n \"$DOTFILES\" ] && [ -f \"$DOTFILES/install.sh\" ]; then timeout 900 bash \"$DOTFILES/install.sh\" 2>&1 | tee /tmp/dotfiles-install.log; else echo \"No dotfiles found, skipping installation\"; fi'",
 
   // Shutdown safety: warn and auto-save uncommitted changes
   "postStopCommand": "bash -c 'if git status --porcelain | grep -q .; then echo \"⚠️ WARNING: Uncommitted changes detected! Auto-saving...\"; git add -A && git commit -m \"Auto-save on shutdown: $(date '+%Y-%m-%d %H:%M:%S')\" && git push || echo \"❌ Failed to push changes\"; else echo \"✅ No uncommitted changes\"; fi'",

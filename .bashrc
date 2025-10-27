@@ -4,79 +4,84 @@
 # ═══════════════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════════════
-# FIRST-RUN WELCOME MESSAGE (After dotfiles installation)
+# DOTFILES INSTALLATION STATUS DISPLAY
+# Shows real-time installation progress when opening terminal
 # ═══════════════════════════════════════════════════════════════════
 
-if [ -f "$HOME/.cache/dotfiles_just_installed" ]; then
-    clear
+if [ -f "$HOME/.dotfiles-status" ]; then
+    # Read status file
+    STATUS_CONTENT=$(cat "$HOME/.dotfiles-status" 2>/dev/null)
 
-    # Load installation summary
-    if [ -f "$HOME/.cache/dotfiles_summary" ]; then
-        source "$HOME/.cache/dotfiles_summary"
-    else
-        PASS_COUNT="N/A"
-        FAIL_COUNT="0"
+    # Check if installation is complete
+    if echo "$STATUS_CONTENT" | grep -q "step:5:Complete"; then
+        # Installation complete - show success message ONCE
+        clear
+        INSTALL_TIME=$(echo "$STATUS_CONTENT" | grep "^start:" | cut -d: -f2)
+        COMPLETE_TIME=$(echo "$STATUS_CONTENT" | grep "step:5" | cut -d: -f4)
+
+        if [ -n "$INSTALL_TIME" ] && [ -n "$COMPLETE_TIME" ]; then
+            DURATION=$((COMPLETE_TIME - INSTALL_TIME))
+            DURATION_MIN=$((DURATION / 60))
+            DURATION_SEC=$((DURATION % 60))
+        else
+            DURATION_MIN=0
+            DURATION_SEC=0
+        fi
+
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════════╗"
+        echo "║  ✅ DOTFILES INSTALLATION COMPLETE                               ║"
+        echo "╚═══════════════════════════════════════════════════════════════════╝"
+        echo ""
+        echo "⏱️  Completed in ${DURATION_MIN}m ${DURATION_SEC}s"
+        echo ""
+        echo "📦 Installed:"
+        echo "   • Claude Code with DSP alias"
+        echo "   • SuperClaude framework"
+        echo "   • MCP servers (claude-flow, ruv-swarm, etc)"
+        echo "   • VS Code extensions"
+        echo ""
+        echo "🚀 Ready to use! Try: dsp"
+        echo ""
+        echo "📋 Full log: /tmp/dotfiles-install.log"
+        echo ""
+        echo "Press ENTER to continue..."
+        read -r
+
+        # Delete status file so we don't show this again
+        rm -f "$HOME/.dotfiles-status"
+
+    elif echo "$STATUS_CONTENT" | grep -q "^step:"; then
+        # Installation in progress - show current step
+        CURRENT_STEP=$(echo "$STATUS_CONTENT" | grep "^step:" | tail -1)
+        STEP_NUM=$(echo "$CURRENT_STEP" | cut -d: -f2)
+        STEP_DESC=$(echo "$CURRENT_STEP" | cut -d: -f3)
+
+        INSTALL_TIME=$(echo "$STATUS_CONTENT" | grep "^start:" | cut -d: -f2)
+        CURRENT_TIME=$(date +%s)
+        if [ -n "$INSTALL_TIME" ]; then
+            ELAPSED=$((CURRENT_TIME - INSTALL_TIME))
+            ELAPSED_MIN=$((ELAPSED / 60))
+            ELAPSED_SEC=$((ELAPSED % 60))
+        else
+            ELAPSED_MIN=0
+            ELAPSED_SEC=0
+        fi
+
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════════╗"
+        echo "║  ⏳ DOTFILES INSTALLATION IN PROGRESS                            ║"
+        echo "╚═══════════════════════════════════════════════════════════════════╝"
+        echo ""
+        echo "📊 Step ${STEP_NUM}/5: ${STEP_DESC}"
+        echo "⌛ Elapsed: ${ELAPSED_MIN}m ${ELAPSED_SEC}s"
+        echo ""
+        echo "💡 This terminal will be ready soon!"
+        echo "   Open a new terminal in ~1 minute to see updated progress."
+        echo ""
+        echo "📋 Full log: /tmp/dotfiles-install.log"
+        echo ""
     fi
-
-    echo ""
-    echo "╔═══════════════════════════════════════════════════════════════════╗"
-    echo "║                                                                   ║"
-    echo "║        🎉  YOUR CODESPACE IS READY!  🎉                           ║"
-    echo "║                                                                   ║"
-    echo "╚═══════════════════════════════════════════════════════════════════╝"
-    echo ""
-    echo "✅ INSTALLED & CONFIGURED:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-
-    # Show versions with checkmarks
-    if command -v claude &> /dev/null; then
-        CLAUDE_VERSION=$(claude --version 2>/dev/null | head -1 || echo "installed")
-        echo "  ✅ Claude Code:        $CLAUDE_VERSION"
-    fi
-
-    if python3 -m SuperClaude --version &> /dev/null 2>&1; then
-        SC_VERSION=$(python3 -m SuperClaude --version 2>/dev/null | head -1 || echo "installed")
-        echo "  ✅ SuperClaude:        $SC_VERSION"
-    fi
-
-    if command -v claude-flow &> /dev/null; then
-        CF_VERSION=$(claude-flow --version 2>/dev/null | head -1 || echo "installed")
-        echo "  ✅ Claude Flow:        $CF_VERSION"
-    fi
-
-    MCP_COUNT=$(grep -c '"command"' "$HOME/.claude.json" 2>/dev/null || echo "0")
-    echo "  ✅ MCP Servers:        $MCP_COUNT configured"
-    echo "  ✅ Extension Watchdog: Running for 20 min"
-
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "📋 QUICK START:"
-    echo ""
-    echo "  dsp                 ← Start Claude Code now!"
-    echo "  dsp --version       ← Verify installation"
-    echo "  check_versions      ← Show all tool versions"
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "⚠️  IMPORTANT REMINDER:"
-    echo ""
-    echo "  📌 This is a GitHub Codespace - changes are NOT auto-saved!"
-    echo "  📌 Remember to commit and push your work regularly:"
-    echo ""
-    echo "     git add ."
-    echo "     git commit -m \"Your message\""
-    echo "     git push"
-    echo ""
-    echo "  💡 TIP: Commit after completing each chunk of work"
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-
-    # Clean up flag files
-    rm -f "$HOME/.cache/dotfiles_just_installed"
-    rm -f "$HOME/.cache/dotfiles_summary"
 fi
 
 # ═══════════════════════════════════════════════════════════════════
@@ -414,4 +419,3 @@ alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
-
