@@ -63,9 +63,6 @@
   // Disable all notification popups
   "git.showPushSuccessNotification": false,
   "extensions.showRecommendationsOnlyOnDemand": true,
-
-  // Make file explorer the default view (not welcome page)
-  "workbench.activityBar.visible": true,
   "workbench.sideBar.location": "left",
 
   // Terminal settings - clean and functional
