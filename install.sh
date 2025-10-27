@@ -369,7 +369,7 @@ if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FI
 
         # Initialize Claude Flow configuration (silent)
         log "Initializing Claude Flow configuration..."
-        if timeout $PACKAGE_TIMEOUT claude-flow init --force >> "$LOG_FILE" 2>&1; then
+        if timeout $PACKAGE_TIMEOUT npx claude-flow@alpha init --force >> "$LOG_FILE" 2>&1; then
             success "Claude Flow configuration initialized"
         else
             warn "Claude Flow init had issues (may need manual setup)"
