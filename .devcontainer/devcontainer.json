@@ -23,19 +23,19 @@
   // VS Code customizations - Extension control
   "customizations": {
     "vscode": {
-      // Essential extensions only
+      // Core extensions (when Settings Sync is OFF)
+      // If Settings Sync is ON, user's synced extensions take priority
       "extensions": [
         "anthropic.claude-code",
-        "ms-python.python",
-        "ms-python.vscode-pylance",
-        "ms-python.debugpy",
-        "ms-toolsai.jupyter",
-        "cweijan.vscode-office",
-        "grapecity.gc-excelviewer",
-        "tomoki1207.pdf",
-        "shd101wyy.markdown-preview-enhanced",
+        "ms-edgedevtools.vscode-edge-devtools",
         "yzhang.markdown-all-in-one",
-        "eamodio.gitlens"
+        "ms-vscode.vscode-typescript-next",
+        "esbenp.prettier-vscode",
+        "christian-kohler.npm-intellisense",
+        "eamodio.gitlens",
+        "PKief.material-icon-theme",
+        "mechatroner.rainbow-csv",
+        "ritwickdey.LiveServer"
       ],
       // Suppress ALL welcome screens, setup prompts, and notifications
       "settings": {
@@ -44,6 +44,17 @@
         "extensions.autoUpdate": false,
         "extensions.ignoreRecommendations": true,
         "extensions.showRecommendationsOnlyOnDemand": true,
+
+        // CRITICAL: Block specific unwanted extensions (Kombai, Test Explorer, Cline)
+        // These will be blocked whether Settings Sync is ON or OFF
+        "extensions.ignoredRecommendations": [
+          "kombai.kombai",
+          "hbenl.vscode-test-explorer",
+          "hocklabs.test-explorer",
+          "littlefox.test-explorer",
+          "saoudrizwan.claude-dev",
+          "cline.cline"
+        ],
 
         // Disable ALL welcome pages and walkthroughs
         "workbench.welcomePage.walkthroughs.openOnInstall": false,
@@ -93,7 +104,12 @@
 
   // Run install script if using dotfiles
   // Use $DOTFILES environment variable (set by GitHub Codespaces) for correct path
-  "postCreateCommand": "bash -c 'if [ -n \"$DOTFILES\" ] && [ -f \"$DOTFILES/install.sh\" ]; then timeout 900 bash \"$DOTFILES/install.sh\"; else echo \"No dotfiles found, skipping installation\"; fi'",
+  // CRITICAL: postCreateCommand runs BEFORE terminal is available - output goes to creation log
+  // Status file will be created and automatically opened so user can watch progress
+  "postCreateCommand": "bash -c 'if [ -n \"$DOTFILES\" ] && [ -f \"$DOTFILES/install.sh\" ]; then timeout 900 bash \"$DOTFILES/install.sh\" 2>&1 | tee /tmp/dotfiles-install-output.log; else echo \"No dotfiles found, skipping installation\"; fi'",
+
+  // SOLUTION: Auto-open status file when codespace starts so user can see progress
+  "postStartCommand": "bash -c 'STATUS_FILE=$(find /workspaces -maxdepth 2 -name \"DOTFILES-INSTALLATION-STATUS.txt\" -o -name \"dotfiles-install-output.log\" 2>/dev/null | head -1); if [ -n \"$STATUS_FILE\" ]; then echo \"\\n╔═══════════════════════════════════════════════════════════════════╗\"; echo \"║  📋 Dotfiles Installation Status (auto-opening in editor)        ║\"; echo \"╚═══════════════════════════════════════════════════════════════════╝\"; sleep 2; code \"$STATUS_FILE\"; fi'",
 
   // Shutdown safety: warn and auto-save uncommitted changes
   "postStopCommand": "bash -c 'if git status --porcelain | grep -q .; then echo \"⚠️ WARNING: Uncommitted changes detected! Auto-saving...\"; git add -A && git commit -m \"Auto-save on shutdown: $(date '+%Y-%m-%d %H:%M:%S')\" && git push || echo \"❌ Failed to push changes\"; else echo \"✅ No uncommitted changes\"; fi'",
@@ -101,4 +117,3 @@
   // Set user
   "remoteUser": "codespace"
 }
-
