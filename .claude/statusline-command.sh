@@ -19,6 +19,45 @@ BRANCH=$(cd "$CWD" 2>/dev/null && git branch --show-current 2>/dev/null)
 printf "\033[1m$MODEL\033[0m in \033[36m$DIR\033[0m"
 [ -n "$BRANCH" ] && printf " on \033[33m⎇ $BRANCH\033[0m"
 
+# Context Window Usage (ALWAYS shown - critical for token awareness)
+CONTEXT_USED=$(echo "$INPUT" | jq -r '.context.used // 0')
+CONTEXT_TOTAL=$(echo "$INPUT" | jq -r '.context.total // 200000')
+
+if [ "$CONTEXT_TOTAL" -gt 0 ]; then
+  CONTEXT_PCT=$(awk "BEGIN {printf \"%.0f\", ($CONTEXT_USED / $CONTEXT_TOTAL) * 100}")
+  CONTEXT_REMAINING=$(awk "BEGIN {printf \"%.0f\", $CONTEXT_TOTAL - $CONTEXT_USED}")
+
+  # Format tokens with K suffix for readability
+  if [ "$CONTEXT_USED" -gt 1000 ]; then
+    CONTEXT_USED_K=$(awk "BEGIN {printf \"%.1fK\", $CONTEXT_USED / 1000}")
+  else
+    CONTEXT_USED_K="${CONTEXT_USED}"
+  fi
+
+  if [ "$CONTEXT_TOTAL" -gt 1000 ]; then
+    CONTEXT_TOTAL_K=$(awk "BEGIN {printf \"%.0fK\", $CONTEXT_TOTAL / 1000}")
+  else
+    CONTEXT_TOTAL_K="${CONTEXT_TOTAL}"
+  fi
+
+  if [ "$CONTEXT_REMAINING" -gt 1000 ]; then
+    CONTEXT_REMAINING_K=$(awk "BEGIN {printf \"%.0fK\", $CONTEXT_REMAINING / 1000}")
+  else
+    CONTEXT_REMAINING_K="${CONTEXT_REMAINING}"
+  fi
+
+  # Color-coded context (green <60%, yellow 60-85%, red >85%)
+  if [ "$CONTEXT_PCT" -lt 60 ]; then
+    CONTEXT_COLOR="\033[32m"  # Green - plenty available
+  elif [ "$CONTEXT_PCT" -lt 85 ]; then
+    CONTEXT_COLOR="\033[33m"  # Yellow - getting full
+  else
+    CONTEXT_COLOR="\033[31m"  # Red - nearly full
+  fi
+
+  printf " │ ${CONTEXT_COLOR}📝 ${CONTEXT_USED_K}/${CONTEXT_TOTAL_K} (${CONTEXT_PCT}%% • ${CONTEXT_REMAINING_K} left)\033[0m"
+fi
+
 # Claude-Flow integration
 FLOW_DIR="$CWD/.claude-flow"
 
