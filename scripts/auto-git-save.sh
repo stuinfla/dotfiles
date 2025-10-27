@@ -66,3 +66,4 @@ while true; do
     # Wait for next interval
     sleep $INTERVAL
 done
+

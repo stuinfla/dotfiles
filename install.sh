@@ -857,3 +857,4 @@ else
     error "❌ Critical components missing - exiting with failure code"
     exit 1
 fi
+

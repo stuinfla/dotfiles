@@ -38,3 +38,4 @@ find "$VSCODE_REMOTE_DIR" -name "*.session" -delete 2>/dev/null || true
 
 # Exit silently (no output unless errors)
 exit 0
+

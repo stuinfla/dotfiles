@@ -51,3 +51,4 @@ touch "$VSCODE_STATE_DIR/.welcome-screens-suppressed"
 
 echo "✅ All welcome screens and setup prompts have been suppressed"
 echo "   VS Code will start with file explorer view and no interruptions"
+

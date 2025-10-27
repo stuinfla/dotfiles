@@ -241,3 +241,4 @@ main
 
 # Exit successfully (don't block shell startup on errors)
 exit 0
+
