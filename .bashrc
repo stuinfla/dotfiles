@@ -107,20 +107,28 @@ elif [ -f "$HOME/dotfiles/scripts/auto-git-save.sh" ]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# CLAUDE CODE ALIASES (Mac-friendly, simple approach)
+# CLAUDE CODE ALIASES AND FUNCTIONS
+# Works in both bash and zsh (also defined in .zshrc for consistency)
 # ═══════════════════════════════════════════════════════════════════
 
-# dsp - Start Claude Code with dangerously-skip-permissions flag
-alias dsp='claude --dangerously-skip-permissions'
-alias DSP='claude --dangerously-skip-permissions'
+# Unalias if exists (in case of previous alias definitions)
+unalias dsp 2>/dev/null
+unalias DSP 2>/dev/null
 
-# dsp-c - Start Claude Code with --continue flag
-alias dsp-c='claude --dangerously-skip-permissions --continue'
-alias DSP-C='claude --dangerously-skip-permissions --continue'
+# dsp - Start Claude Code with bypass permissions flag
+dsp() {
+  /Users/stuartkerr/.npm-global/bin/claude --permission-mode bypassPermissions "$@"
+}
 
-# dsb - Start Claude Code in background
-alias dsb='claude --dangerously-skip-permissions &'
-alias DSB='claude --dangerously-skip-permissions &'
+DSP() {
+  dsp "$@"
+}
+
+# Legacy aliases (for backward compatibility)
+alias dsp-c='claude --permission-mode bypassPermissions --continue'
+alias DSP-C='claude --permission-mode bypassPermissions --continue'
+alias dsb='claude --permission-mode bypassPermissions &'
+alias DSB='claude --permission-mode bypassPermissions &'
 
 # ═══════════════════════════════════════════════════════════════════
 # AUTHENTICATION CONFIGURATION
