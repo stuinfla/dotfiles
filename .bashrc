@@ -107,23 +107,20 @@ elif [ -f "$HOME/dotfiles/scripts/auto-git-save.sh" ]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# CLAUDE CODE ALIASES
+# CLAUDE CODE ALIASES (Mac-friendly, simple approach)
 # ═══════════════════════════════════════════════════════════════════
 
-# DSP/dsp - Start Claude Code (skip permissions with ANTHROPIC_CLAUDE_CODE_SKIP_PERMISSIONS)
-# Supports /c flag for --continue
-dsp() {
-  if [ "$1" = "/c" ]; then
-    ANTHROPIC_CLAUDE_CODE_SKIP_PERMISSIONS=true claude --continue "${@:2}"
-  else
-    ANTHROPIC_CLAUDE_CODE_SKIP_PERMISSIONS=true claude "$@"
-  fi
-}
-DSP() { dsp "$@"; }
+# dsp - Start Claude Code with dangerously-skip-permissions flag
+alias dsp='claude --dangerously-skip-permissions'
+alias DSP='claude --dangerously-skip-permissions'
 
-# DSB/dsb - Start Claude Code in background
-dsb() { ANTHROPIC_CLAUDE_CODE_SKIP_PERMISSIONS=true claude "$@" & }
-DSB() { dsb "$@"; }
+# dsp-c - Start Claude Code with --continue flag
+alias dsp-c='claude --dangerously-skip-permissions --continue'
+alias DSP-C='claude --dangerously-skip-permissions --continue'
+
+# dsb - Start Claude Code in background
+alias dsb='claude --dangerously-skip-permissions &'
+alias DSB='claude --dangerously-skip-permissions &'
 
 # ═══════════════════════════════════════════════════════════════════
 # AUTHENTICATION CONFIGURATION
