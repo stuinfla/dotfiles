@@ -108,6 +108,9 @@
   // SOLUTION: install.sh writes status to ~/.dotfiles-status, .bashrc displays it when terminal opens
   "postCreateCommand": "bash -c 'if [ -n \"$DOTFILES\" ] && [ -f \"$DOTFILES/install.sh\" ]; then timeout 900 bash \"$DOTFILES/install.sh\" 2>&1 | tee /tmp/dotfiles-install.log; else echo \"No dotfiles found, skipping installation\"; fi'",
 
+  // Auto-open status file when codespace starts (makes installation progress immediately visible)
+  "postStartCommand": "bash -c 'if [ -f \"$PWD/DOTFILES-INSTALLATION-STATUS.txt\" ]; then sleep 5 && code \"$PWD/DOTFILES-INSTALLATION-STATUS.txt\"; fi'",
+
   // Shutdown safety: warn and auto-save uncommitted changes
   "postStopCommand": "bash -c 'if git status --porcelain | grep -q .; then echo \"⚠️ WARNING: Uncommitted changes detected! Auto-saving...\"; git add -A && git commit -m \"Auto-save on shutdown: $(date '+%Y-%m-%d %H:%M:%S')\" && git push || echo \"❌ Failed to push changes\"; else echo \"✅ No uncommitted changes\"; fi'",
 
