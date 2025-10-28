@@ -15,16 +15,9 @@ set -u  # Error on undefined variables
 LOG_FILE="/tmp/dotfiles-install.log"
 PROGRESS_FILE="/tmp/dotfiles-progress.txt"
 
-# CRITICAL: Create visible status file in workspace that users can see!
-# postCreateCommand runs bash from $DOTFILES directory, so $PWD is the dotfiles dir, NOT the repo!
-# We need to find the ACTUAL repository directory in /workspaces/
-# Find first directory in /workspaces/ that isn't .codespaces, .oryx, or hidden
-REPO_DIR=$(find /workspaces -maxdepth 1 -type d ! -name 'workspaces' ! -name '.*' -print -quit 2>/dev/null)
-if [ -z "$REPO_DIR" ] || [ ! -d "$REPO_DIR" ]; then
-    # Fallback: use current directory if we can't find repo
-    REPO_DIR="$PWD"
-fi
-VISIBLE_STATUS_FILE="$REPO_DIR/DOTFILES-INSTALLATION-STATUS.txt"
+# CRITICAL: postCreateCommand runs FROM /workspaces/<repo-name>/ so $PWD is already correct!
+# No need for complex find logic - $PWD is exactly where we need to create the file.
+VISIBLE_STATUS_FILE="$PWD/DOTFILES-INSTALLATION-STATUS.txt"
 
 # Debug: Log the paths we're using
 echo "DEBUG: REPO_DIR=$REPO_DIR" >> /tmp/dotfiles-startup.log
