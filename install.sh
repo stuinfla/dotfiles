@@ -1,7 +1,18 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════
 # CODESPACES DOTFILES INSTALLATION SCRIPT
-# Updated: 2025-10-16 - Parallel installation, timeouts, security fixes
+# Updated: 2025-10-30 - Timeout fixes, heartbeat monitoring, hang prevention
+# ═══════════════════════════════════════════════════════════════════
+#
+# HANG PREVENTION FIXES:
+# - run_with_timeout() wrapper for ALL external commands (npm, pip, gh)
+# - Heartbeat monitoring every 10 seconds during long operations
+# - Emergency timeout after 15 minutes (kills entire script)
+# - Progress indicators every 15 seconds for parallel jobs
+# - Proper Ctrl+C handling with cleanup trap
+# - Non-blocking background jobs with timeout protection
+# - Detailed logging of what command is running
+#
 # ═══════════════════════════════════════════════════════════════════
 
 # NOTE: NOT using 'set -e' because we need custom error handling for:
@@ -107,6 +118,53 @@ readonly NC='\033[0m' # No Color
 # HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════
 
+# Run command with timeout and heartbeat monitoring
+# Usage: run_with_timeout <timeout_seconds> <command> [args...]
+run_with_timeout() {
+    local timeout=$1
+    shift
+    local cmd="$*"
+
+    log "Running with ${timeout}s timeout: $cmd"
+
+    # Start heartbeat in background
+    (
+        local elapsed=0
+        while [ $elapsed -lt $timeout ]; do
+            sleep 10
+            elapsed=$((elapsed + 10))
+            if [ $elapsed -lt $timeout ]; then
+                progress "Still working... (${elapsed}s elapsed, max ${timeout}s)"
+            fi
+        done
+    ) &
+    local heartbeat_pid=$!
+
+    # Run command with timeout
+    timeout "$timeout" bash -c "$cmd" &
+    local cmd_pid=$!
+
+    # Wait for command to finish
+    local exit_code=0
+    if wait $cmd_pid 2>/dev/null; then
+        exit_code=0
+    else
+        exit_code=$?
+    fi
+
+    # Kill heartbeat
+    kill $heartbeat_pid 2>/dev/null || true
+    wait $heartbeat_pid 2>/dev/null || true
+
+    # Check if timeout occurred (exit code 124)
+    if [ $exit_code -eq 124 ]; then
+        error "Command timed out after ${timeout}s: $cmd"
+        return 124
+    fi
+
+    return $exit_code
+}
+
 # Show large, visible step indicators
 show_step() {
     local current=$1
@@ -166,24 +224,73 @@ warn() {
 
 # Cleanup function for timeouts
 cleanup() {
-    log "Cleaning up background processes..."
-    jobs -p | xargs -r kill 2>/dev/null || true
+    local exit_code=$?
+    log "Cleaning up background processes... (exit code: $exit_code)"
+
+    # Kill all background jobs
+    jobs -p | xargs -r kill -TERM 2>/dev/null || true
+    sleep 1
+    jobs -p | xargs -r kill -KILL 2>/dev/null || true
+
+    # Kill script timeout watcher
+    if [ -n "${SCRIPT_TIMEOUT_PID:-}" ]; then
+        kill -TERM $SCRIPT_TIMEOUT_PID 2>/dev/null || true
+    fi
+
+    # If we're exiting due to timeout or error, update visible status
+    if [ $exit_code -ne 0 ] && [ -n "${VISIBLE_STATUS_FILE:-}" ]; then
+        echo "" >> "$VISIBLE_STATUS_FILE"
+        echo "════════════════════════════════════════════════════════════════════" >> "$VISIBLE_STATUS_FILE"
+        echo "⚠️  Installation interrupted or timed out at: $(date)" >> "$VISIBLE_STATUS_FILE"
+        echo "════════════════════════════════════════════════════════════════════" >> "$VISIBLE_STATUS_FILE"
+    fi
 }
 
-# Set up trap for cleanup
+# Set up trap for cleanup - will run on EXIT, SIGINT (Ctrl+C), SIGTERM
 trap cleanup EXIT INT TERM
 
+# Make Ctrl+C work properly
+set -m  # Enable job control
+
 # ═══════════════════════════════════════════════════════════════════
-# SCRIPT TIMEOUT WRAPPER
+# SCRIPT TIMEOUT WRAPPER - EMERGENCY KILL SWITCH
 # ═══════════════════════════════════════════════════════════════════
 
-# Set a timeout for the entire script
+# Set a timeout for the entire script - ABSOLUTE MAXIMUM 15 MINUTES
 (
-    sleep $SCRIPT_TIMEOUT
-    error "Installation timed out after ${SCRIPT_TIMEOUT}s"
-    kill -TERM $$ 2>/dev/null || true
+    local elapsed=0
+    local max_time=$SCRIPT_TIMEOUT
+
+    while [ $elapsed -lt $max_time ]; do
+        sleep 60  # Check every minute
+        elapsed=$((elapsed + 60))
+
+        if [ $elapsed -ge $max_time ]; then
+            echo "════════════════════════════════════════════════════════════════════" >&2
+            echo "🚨 EMERGENCY TIMEOUT: Installation exceeded ${SCRIPT_TIMEOUT}s" >&2
+            echo "════════════════════════════════════════════════════════════════════" >&2
+            echo "" >&2
+            echo "This usually means a package installation hung." >&2
+            echo "Check /tmp/dotfiles-install.log for details." >&2
+            echo "" >&2
+
+            # Update visible status
+            if [ -f "$VISIBLE_STATUS_FILE" ]; then
+                echo "" >> "$VISIBLE_STATUS_FILE"
+                echo "════════════════════════════════════════════════════════════════════" >> "$VISIBLE_STATUS_FILE"
+                echo "🚨 EMERGENCY TIMEOUT after ${SCRIPT_TIMEOUT}s" >> "$VISIBLE_STATUS_FILE"
+                echo "════════════════════════════════════════════════════════════════════" >> "$VISIBLE_STATUS_FILE"
+            fi
+
+            # Kill the main script
+            kill -TERM $$ 2>/dev/null || true
+            sleep 2
+            kill -KILL $$ 2>/dev/null || true
+        fi
+    done
 ) &
 SCRIPT_TIMEOUT_PID=$!
+log "Emergency timeout watcher started (max ${SCRIPT_TIMEOUT}s)"
 
 # ═══════════════════════════════════════════════════════════════════
 # DOTFILES DIRECTORY DETECTION
@@ -316,11 +423,13 @@ echo ""
 # Install Claude Code with visible progress
 progress "  [1/3] Installing Claude Code (latest)..."
 log "Installing Claude Code..."
-if timeout $PACKAGE_TIMEOUT npm install -g @anthropic-ai/claude-code@latest --force >> "$LOG_FILE" 2>&1; then
+if run_with_timeout $PACKAGE_TIMEOUT "npm install -g @anthropic-ai/claude-code@latest --force --progress=false --loglevel=error >> '$LOG_FILE' 2>&1"; then
     if command -v claude &> /dev/null; then
         success "        Claude Code installed"
         log "Claude Code version: $(claude --version 2>&1 | head -1)"
     fi
+else
+    error "Claude Code installation failed or timed out"
 fi
 
 # Install SuperClaude with visible progress
@@ -328,13 +437,13 @@ progress "  [2/3] Installing SuperClaude (latest)..."
 log "Installing SuperClaude..."
 SUPERCLAUDE_INSTALLED=false
 if command -v pipx &> /dev/null; then
-    if timeout $PACKAGE_TIMEOUT pipx install SuperClaude --force >> "$LOG_FILE" 2>&1; then
+    if run_with_timeout $PACKAGE_TIMEOUT "pipx install SuperClaude --force >> '$LOG_FILE' 2>&1"; then
         SUPERCLAUDE_INSTALLED=true
-    elif timeout $PACKAGE_TIMEOUT pipx upgrade SuperClaude >> "$LOG_FILE" 2>&1; then
+    elif run_with_timeout $PACKAGE_TIMEOUT "pipx upgrade SuperClaude >> '$LOG_FILE' 2>&1"; then
         SUPERCLAUDE_INSTALLED=true
     fi
 else
-    if timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall SuperClaude >> "$LOG_FILE" 2>&1; then
+    if run_with_timeout $PACKAGE_TIMEOUT "pip install --break-system-packages --user --upgrade --force-reinstall --no-input SuperClaude >> '$LOG_FILE' 2>&1"; then
         SUPERCLAUDE_INSTALLED=true
     fi
 fi
@@ -342,21 +451,21 @@ fi
 if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     success "        SuperClaude installed"
     log "SuperClaude version: $(python3 -m SuperClaude --version 2>&1 | head -1)"
-    # Silent setup
-    python3 -m SuperClaude install >> "$LOG_FILE" 2>&1 || true
+    # Silent setup with timeout
+    run_with_timeout 60 "python3 -m SuperClaude install >> '$LOG_FILE' 2>&1" || true
 fi
 
 # Install Claude Flow @alpha with visible progress
 progress "  [3/3] Installing Claude Flow @alpha (MCP server + 90+ tools)..."
 log "Installing Claude Flow @alpha..."
-if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FILE" 2>&1; then
+if run_with_timeout $PACKAGE_TIMEOUT "npm install -g claude-flow@alpha --force --progress=false --loglevel=error >> '$LOG_FILE' 2>&1"; then
     if command -v claude-flow &> /dev/null; then
         success "        Claude Flow installed"
         log "Claude Flow version: $(claude-flow --version 2>&1 | head -1)"
 
         # Initialize Claude Flow configuration (silent)
         log "Initializing Claude Flow configuration..."
-        if timeout $PACKAGE_TIMEOUT claude-flow init --force >> "$LOG_FILE" 2>&1; then
+        if run_with_timeout $PACKAGE_TIMEOUT "claude-flow init --force >> '$LOG_FILE' 2>&1"; then
             success "Claude Flow configuration initialized"
         else
             warn "Claude Flow init had issues (may need manual setup)"
@@ -365,7 +474,7 @@ if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FI
         # CRITICAL: Register Claude Flow as MCP server
         log "Registering Claude Flow as MCP server..."
         if command -v claude &> /dev/null; then
-            if claude mcp add claude-flow npx claude-flow@alpha mcp start >> "$LOG_FILE" 2>&1; then
+            if run_with_timeout 60 "claude mcp add claude-flow npx claude-flow@alpha mcp start >> '$LOG_FILE' 2>&1"; then
                 success "        Claude Flow MCP server registered"
             else
                 error "Failed to register Claude Flow MCP server"
@@ -377,7 +486,7 @@ if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FI
         warn "Claude Flow installation completed but command not found"
     fi
 else
-    warn "Claude Flow installation failed (not critical)"
+    warn "Claude Flow installation failed or timed out (not critical)"
 fi
 
 echo ""
@@ -474,11 +583,11 @@ install_npm_package() {
     local display_name="$2"
 
     log "Installing $package_name..."
-    if timeout $PACKAGE_TIMEOUT npm install -g "${package_name}@latest" --force >> "$LOG_FILE" 2>&1; then
+    if run_with_timeout $PACKAGE_TIMEOUT "npm install -g '${package_name}@latest' --force --progress=false --loglevel=error >> '$LOG_FILE' 2>&1"; then
         success "$display_name"
         return 0
     else
-        error "$display_name"
+        error "$display_name (failed or timed out)"
         log "Failed to install $package_name - check $LOG_FILE for details"
         return 1
     fi
@@ -490,11 +599,11 @@ install_pip_package() {
     local display_name="$2"
 
     log "Installing $package_name..."
-    if timeout $PACKAGE_TIMEOUT pip install --break-system-packages --user --upgrade --force-reinstall "$package_name" >> "$LOG_FILE" 2>&1; then
+    if run_with_timeout $PACKAGE_TIMEOUT "pip install --break-system-packages --user --upgrade --force-reinstall --no-input '$package_name' >> '$LOG_FILE' 2>&1"; then
         success "$display_name"
         return 0
     else
-        error "$display_name"
+        error "$display_name (failed or timed out)"
         log "Failed to install $package_name - check $LOG_FILE for details"
         return 1
     fi
@@ -525,6 +634,32 @@ log "Waiting for installations to complete..."
 FAILED_INSTALLS=0
 TOTAL_INSTALLS=4
 
+# Monitor background jobs with heartbeat
+WAIT_START=$SECONDS
+WAIT_TIMEOUT=600  # 10 minutes max for all parallel installs
+
+while [ $((SECONDS - WAIT_START)) -lt $WAIT_TIMEOUT ]; do
+    # Check if all jobs are done
+    JOBS_DONE=0
+    for pid in $PID_1 $PID_2 $PID_3 $PID_4; do
+        if ! kill -0 $pid 2>/dev/null; then
+            ((JOBS_DONE++))
+        fi
+    done
+
+    if [ $JOBS_DONE -eq 4 ]; then
+        break
+    fi
+
+    # Show heartbeat every 15 seconds
+    if [ $((SECONDS % 15)) -eq 0 ]; then
+        progress "Parallel installs in progress... ($JOBS_DONE/4 complete)"
+    fi
+
+    sleep 1
+done
+
+# Collect exit codes
 for pid in $PID_1 $PID_2 $PID_3 $PID_4; do
     if ! wait $pid 2>/dev/null; then
         ((FAILED_INSTALLS++))
@@ -626,7 +761,7 @@ if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME"
 
     if [ -n "$REPO_NAME" ]; then
         log "Renaming codespace to: $REPO_NAME"
-        if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$REPO_NAME" >> "$LOG_FILE" 2>&1; then
+        if run_with_timeout 30 "gh codespace edit --codespace '$CODESPACE_NAME' --display-name '$REPO_NAME' >> '$LOG_FILE' 2>&1"; then
             success "        Codespace renamed to: $REPO_NAME"
         else
             warn "        Could not auto-rename codespace (not critical)"
