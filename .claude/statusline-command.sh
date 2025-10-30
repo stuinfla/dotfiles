@@ -19,45 +19,6 @@ BRANCH=$(cd "$CWD" 2>/dev/null && git branch --show-current 2>/dev/null)
 printf "\033[1m$MODEL\033[0m in \033[36m$DIR\033[0m"
 [ -n "$BRANCH" ] && printf " on \033[33m⎇ $BRANCH\033[0m"
 
-# Context Window Usage (ALWAYS shown - critical for token awareness)
-CONTEXT_USED=$(echo "$INPUT" | jq -r '.context.used // 0')
-CONTEXT_TOTAL=$(echo "$INPUT" | jq -r '.context.total // 200000')
-
-if [ "$CONTEXT_TOTAL" -gt 0 ]; then
-  CONTEXT_PCT=$(awk "BEGIN {printf \"%.0f\", ($CONTEXT_USED / $CONTEXT_TOTAL) * 100}")
-  CONTEXT_REMAINING=$(awk "BEGIN {printf \"%.0f\", $CONTEXT_TOTAL - $CONTEXT_USED}")
-
-  # Format tokens with K suffix for readability
-  if [ "$CONTEXT_USED" -gt 1000 ]; then
-    CONTEXT_USED_K=$(awk "BEGIN {printf \"%.1fK\", $CONTEXT_USED / 1000}")
-  else
-    CONTEXT_USED_K="${CONTEXT_USED}"
-  fi
-
-  if [ "$CONTEXT_TOTAL" -gt 1000 ]; then
-    CONTEXT_TOTAL_K=$(awk "BEGIN {printf \"%.0fK\", $CONTEXT_TOTAL / 1000}")
-  else
-    CONTEXT_TOTAL_K="${CONTEXT_TOTAL}"
-  fi
-
-  if [ "$CONTEXT_REMAINING" -gt 1000 ]; then
-    CONTEXT_REMAINING_K=$(awk "BEGIN {printf \"%.0fK\", $CONTEXT_REMAINING / 1000}")
-  else
-    CONTEXT_REMAINING_K="${CONTEXT_REMAINING}"
-  fi
-
-  # Color-coded context (green <60%, yellow 60-85%, red >85%)
-  if [ "$CONTEXT_PCT" -lt 60 ]; then
-    CONTEXT_COLOR="\033[32m"  # Green - plenty available
-  elif [ "$CONTEXT_PCT" -lt 85 ]; then
-    CONTEXT_COLOR="\033[33m"  # Yellow - getting full
-  else
-    CONTEXT_COLOR="\033[31m"  # Red - nearly full
-  fi
-
-  printf " │ ${CONTEXT_COLOR}📝 ${CONTEXT_USED_K}/${CONTEXT_TOTAL_K} (${CONTEXT_PCT}%% • ${CONTEXT_REMAINING_K} left)\033[0m"
-fi
-
 # Claude-Flow integration
 FLOW_DIR="$CWD/.claude-flow"
 
@@ -85,54 +46,42 @@ if [ -d "$FLOW_DIR" ]; then
     fi
   fi
 
-  # 2. Real-time System Metrics (showing used/total for clarity)
+  # 2. Real-time System Metrics
   if [ -f "$FLOW_DIR/metrics/system-metrics.json" ]; then
     # Get latest metrics (last entry in array)
     LATEST=$(jq -r '.[-1]' "$FLOW_DIR/metrics/system-metrics.json" 2>/dev/null)
 
     if [ -n "$LATEST" ] && [ "$LATEST" != "null" ]; then
-      # CPU cores: Show cores in use / total cores
+      # CPU cores count
       CPU_CORES=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "?")
-      CPU_LOAD=$(echo "$LATEST" | jq -r '.cpuLoad // 0' | awk '{printf "%.2f", $1}')
+      printf "  \033[35m🖥️  ${CPU_CORES}c\033[0m"
 
-      if [ "$CPU_LOAD" != "0" ] && [ "$CPU_LOAD" != "null" ]; then
-        # Estimate cores in use based on load average
-        CORES_USED=$(awk "BEGIN {printf \"%.1f\", $CPU_LOAD * $CPU_CORES}")
-        printf "  \033[35m🖥️  ${CORES_USED}/${CPU_CORES}\033[0m"
-      else
-        printf "  \033[35m🖥️  ${CPU_CORES}c\033[0m"
-      fi
-
-      # Memory: Show used/total in GB
-      MEM_USED_PCT=$(echo "$LATEST" | jq -r '.memoryUsagePercent // 0' | awk '{printf "%.0f", $1}')
-      if [ -n "$MEM_USED_PCT" ] && [ "$MEM_USED_PCT" != "null" ]; then
-        # Get total memory in GB
-        TOTAL_MEM=$(free -g 2>/dev/null | awk '/^Mem:/ {print $2}' || sysctl -n hw.memsize 2>/dev/null | awk '{printf "%.0f", $1/1024/1024/1024}' || echo "?")
-        USED_MEM=$(awk "BEGIN {printf \"%.1f\", $TOTAL_MEM * $MEM_USED_PCT / 100}")
-
-        # Color-coded memory (green <60% used, yellow 60-80%, red >80%)
-        if [ "$MEM_USED_PCT" -lt 60 ]; then
-          MEM_COLOR="\033[32m"  # Green - plenty available
-        elif [ "$MEM_USED_PCT" -lt 80 ]; then
-          MEM_COLOR="\033[33m"  # Yellow - moderate usage
+      # Memory usage
+      MEM_PERCENT=$(echo "$LATEST" | jq -r '.memoryUsagePercent // 0' | awk '{printf "%.0f", $1}')
+      if [ -n "$MEM_PERCENT" ] && [ "$MEM_PERCENT" != "null" ]; then
+        # Color-coded memory (green <60%, yellow 60-80%, red >80%)
+        if [ "$MEM_PERCENT" -lt 60 ]; then
+          MEM_COLOR="\033[32m"  # Green
+        elif [ "$MEM_PERCENT" -lt 80 ]; then
+          MEM_COLOR="\033[33m"  # Yellow
         else
-          MEM_COLOR="\033[31m"  # Red - high usage
+          MEM_COLOR="\033[31m"  # Red
         fi
-        printf "  ${MEM_COLOR}💾 ${USED_MEM}/${TOTAL_MEM}GB\033[0m"
+        printf "  ${MEM_COLOR}💾 ${MEM_PERCENT}%\033[0m"
       fi
 
-      # CPU load: Show percentage used
-      CPU_LOAD_PCT=$(echo "$LATEST" | jq -r '.cpuLoad // 0' | awk '{printf "%.0f", $1 * 100}')
-      if [ -n "$CPU_LOAD_PCT" ] && [ "$CPU_LOAD_PCT" != "null" ]; then
+      # CPU load
+      CPU_LOAD=$(echo "$LATEST" | jq -r '.cpuLoad // 0' | awk '{printf "%.0f", $1 * 100}')
+      if [ -n "$CPU_LOAD" ] && [ "$CPU_LOAD" != "null" ]; then
         # Color-coded CPU (green <50%, yellow 50-75%, red >75%)
-        if [ "$CPU_LOAD_PCT" -lt 50 ]; then
-          CPU_COLOR="\033[32m"  # Green - low load
-        elif [ "$CPU_LOAD_PCT" -lt 75 ]; then
-          CPU_COLOR="\033[33m"  # Yellow - moderate load
+        if [ "$CPU_LOAD" -lt 50 ]; then
+          CPU_COLOR="\033[32m"  # Green
+        elif [ "$CPU_LOAD" -lt 75 ]; then
+          CPU_COLOR="\033[33m"  # Yellow
         else
-          CPU_COLOR="\033[31m"  # Red - high load
+          CPU_COLOR="\033[31m"  # Red
         fi
-        printf "  ${CPU_COLOR}⚙ ${CPU_LOAD_PCT}%\033[0m"
+        printf "  ${CPU_COLOR}⚙ ${CPU_LOAD}%\033[0m"
       fi
     fi
   fi

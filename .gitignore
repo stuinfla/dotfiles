@@ -8,11 +8,35 @@ logs/
 
 # Test artifacts
 playwright-test-screenshots/
+playwright-screenshots/
+*-test-*.json
+test-report-*.json
+visual-validation-test-*.json
+claude-flow-validation-test-*.json
+final-validation-test-*.json
+real-browser-test-test-*.json
+
+# Temporary documentation from testing
+AUTOMATED-TESTING-PLAN.md
+CURRENT-STATUS-*.md
+FINAL-STATUS-*.md
+QUICK-START-TESTING.md
+READY-FOR-TESTING.md
+TEST-RESULTS-*.md
+VALIDATION-RESULTS.md
+PRE-REBOOT-BACKUP.md
 
 # Temporary files
 tmp/
 temp/
 *.tmp
+
+# Node.js dependencies and test infrastructure
+node_modules/
+package-lock.json
+test-*.js
+watch-*.js
+monitor-*.js
 
 # OS files
 .DS_Store
@@ -24,3 +48,35 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Container files (removed from project)
+.devcontainer/
+devcontainer.json
+add-devcontainer.sh
+
+# Claude Flow generated files
+.claude/
+.mcp.json
+claude-flow.config.json
+.swarm/
+.hive-mind/
+.claude-flow/
+memory/
+coordination/
+memory/claude-flow-data.json
+memory/sessions/*
+!memory/sessions/README.md
+memory/agents/*
+!memory/agents/README.md
+coordination/memory_bank/*
+coordination/subtasks/*
+coordination/orchestration/*
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+claude-flow
+# Removed Windows wrapper files per user request
+hive-mind-prompt-*.txt

@@ -68,5 +68,25 @@
   // Terminal settings - clean and functional
   "terminal.integrated.showExitAlert": false,
   "terminal.integrated.confirmOnExit": "never",
-  "terminal.integrated.confirmOnKill": "never"
+  "terminal.integrated.confirmOnKill": "never",
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SYSTEM STATUS LINE MONITOR
+  // ═══════════════════════════════════════════════════════════════════
+  // Requires: Custom Status Bar extension (jnbt.vscode-custom-status-bar)
+  // Install: code --install-extension jnbt.vscode-custom-status-bar
+  // Start monitor: scripts/statusline-monitor.sh monitor 5 &
+
+  "customStatusBar.items": [
+    {
+      "id": "system-status",
+      "text": "$(pulse) Loading...",
+      "tooltip": "System Status: CPU, Memory, Context",
+      "command": "workbench.action.terminal.toggleTerminal",
+      "alignment": "right",
+      "priority": 100,
+      "interval": 5000,
+      "textSource": "file:///tmp/statusline.txt"
+    }
+  ]
 }

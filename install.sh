@@ -15,9 +15,16 @@ set -u  # Error on undefined variables
 LOG_FILE="/tmp/dotfiles-install.log"
 PROGRESS_FILE="/tmp/dotfiles-progress.txt"
 
-# CRITICAL: postCreateCommand runs FROM /workspaces/<repo-name>/ so $PWD is already correct!
-# No need for complex find logic - $PWD is exactly where we need to create the file.
-VISIBLE_STATUS_FILE="$PWD/DOTFILES-INSTALLATION-STATUS.txt"
+# CRITICAL: Create visible status file in workspace that users can see!
+# postCreateCommand runs bash from $DOTFILES directory, so $PWD is the dotfiles dir, NOT the repo!
+# We need to find the ACTUAL repository directory in /workspaces/
+# Find first directory in /workspaces/ that isn't .codespaces, .oryx, or hidden
+REPO_DIR=$(find /workspaces -maxdepth 1 -type d ! -name 'workspaces' ! -name '.*' -print -quit 2>/dev/null)
+if [ -z "$REPO_DIR" ] || [ ! -d "$REPO_DIR" ]; then
+    # Fallback: use current directory if we can't find repo
+    REPO_DIR="$PWD"
+fi
+VISIBLE_STATUS_FILE="$REPO_DIR/DOTFILES-INSTALLATION-STATUS.txt"
 
 # Debug: Log the paths we're using
 echo "DEBUG: REPO_DIR=$REPO_DIR" >> /tmp/dotfiles-startup.log
@@ -81,19 +88,6 @@ PROGRESS LOG:
 EOF
 
 # ═══════════════════════════════════════════════════════════════════
-# INITIALIZE STATUS FILE FOR BASHRC DISPLAY
-# ═══════════════════════════════════════════════════════════════════
-
-# Create status file that .bashrc will read to show progress
-STATUS_FILE="$HOME/.dotfiles-status"
-START_TIME=$(date +%s)
-
-cat > "$STATUS_FILE" <<STATUSEOF
-start:${START_TIME}
-step:0:Initializing
-STATUSEOF
-
-# ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════
 
@@ -112,6 +106,23 @@ readonly NC='\033[0m' # No Color
 # ═══════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════
+
+# Show large, visible step indicators
+show_step() {
+    local current=$1
+    local total=$2
+    local description=$3
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════════╗"
+    echo "║  STEP $current/$total: $description"
+    echo "╚═══════════════════════════════════════════════════════════════════╝"
+    echo ""
+    # Update visible status file
+    echo "" >> "$VISIBLE_STATUS_FILE"
+    echo "════════════════════════════════════════════════════════════════════" >> "$VISIBLE_STATUS_FILE"
+    echo "STEP $current/$total: $description" >> "$VISIBLE_STATUS_FILE"
+    echo "════════════════════════════════════════════════════════════════════" >> "$VISIBLE_STATUS_FILE"
+}
 
 # Print to log file only (with timestamp)
 log() {
@@ -151,17 +162,6 @@ warn() {
     echo -e "${YELLOW}⚠️  $*${NC}"
     echo "[$(date +'%H:%M:%S')] ⚠️ $*" >> "$PROGRESS_FILE"
     echo "[$(date +'%H:%M:%S')] ⚠️ $*" >> "$VISIBLE_STATUS_FILE"
-}
-
-# Update status file for .bashrc to display progress
-update_status() {
-    local step_num="$1"
-    local step_desc="$2"
-
-    cat > "$STATUS_FILE" <<STATUSEOF
-start:${START_TIME}
-step:${step_num}:${step_desc}
-STATUSEOF
 }
 
 # Cleanup function for timeouts
@@ -235,19 +235,15 @@ echo ""
 # STEP 1: Copy Configuration Files
 # ═══════════════════════════════════════════════════════════════════
 
-echo ""
-echo "╔═══════════════════════════════════════════════════════════════════╗"
-echo "║  STEP 1/5: Setting up shell configuration                        ║"
-echo "╚═══════════════════════════════════════════════════════════════════╝"
-echo ""
-update_status "1" "Setting up shell configuration"
-echo "📝 Copying shell configuration and git settings..."
+show_step 1 5 "Setting up shell configuration"
+echo "📝 Copying configuration files..."
 echo ""
 
 # Copy .bashrc FIRST (critical for shell aliases)
+progress "  [1/5] Copying .bashrc..."
 if [ -f "$DOTFILES_DIR/.bashrc" ]; then
     if cp "$DOTFILES_DIR/.bashrc" ~/.bashrc; then
-        success "Copied .bashrc to home directory"
+        success "        .bashrc copied"
     else
         error "CRITICAL: Failed to copy .bashrc"
         exit 1
@@ -258,18 +254,20 @@ else
 fi
 
 # Copy .bash_profile (loads .bashrc on login)
+progress "  [2/5] Copying .bash_profile..."
 if [ -f "$DOTFILES_DIR/.bash_profile" ]; then
     if cp "$DOTFILES_DIR/.bash_profile" ~/.bash_profile; then
-        success "Copied .bash_profile to home directory"
+        success "        .bash_profile copied"
     else
         warn "Failed to copy .bash_profile (not critical)"
     fi
 fi
 
 # Copy .claude.json (critical for MCP servers)
+progress "  [3/5] Copying .claude.json..."
 if [ -f "$DOTFILES_DIR/.claude.json" ]; then
     if cp "$DOTFILES_DIR/.claude.json" ~/.claude.json && chmod 600 ~/.claude.json; then
-        success "Copied .claude.json to home directory (permissions: 600)"
+        success "        .claude.json copied (permissions: 600)"
     else
         error "CRITICAL: Failed to copy or chmod .claude.json"
         exit 1
@@ -280,13 +278,13 @@ else
 fi
 
 # Copy .vscode directory to workspace (blocks Cline + suppresses welcome screens)
-progress "Configuring VS Code to suppress welcome screens..."
+progress "  [4/5] Configuring VS Code..."
 if [ -d "/workspaces" ]; then
     WORKSPACE_DIR=$(find /workspaces -maxdepth 1 -type d ! -name "workspaces" -print -quit 2>/dev/null)
     if [ -n "$WORKSPACE_DIR" ] && [ -d "$DOTFILES_DIR/.vscode" ]; then
         mkdir -p "$WORKSPACE_DIR/.vscode"
         if cp -r "$DOTFILES_DIR/.vscode/"* "$WORKSPACE_DIR/.vscode/" 2>/dev/null; then
-            success "VS Code configured: Cline blocked + welcome screens suppressed"
+            success "        VS Code configured (welcome screens suppressed)"
         else
             log "⚠️  Could not copy .vscode (non-critical)"
         fi
@@ -294,29 +292,25 @@ if [ -d "/workspaces" ]; then
 fi
 
 # Copy .claude-flow directory for full instantiation
+progress "  [5/5] Copying .claude-flow directory..."
 if [ -d "$DOTFILES_DIR/.claude-flow" ]; then
     if cp -r "$DOTFILES_DIR/.claude-flow" ~/ 2>/dev/null; then
-        success "Copied .claude-flow directory (full instantiation)"
+        success "        .claude-flow directory copied"
     else
         log "⚠️  Could not copy .claude-flow (will be created by init)"
     fi
 fi
 
 echo ""
+success "✅ Step 1/5 complete: Shell configuration ready"
+echo ""
 
 # ═══════════════════════════════════════════════════════════════════
 # STEP 2: Install Core Tools (Claude Code & SuperClaude)
 # ═══════════════════════════════════════════════════════════════════
 
-echo ""
-echo "╔═══════════════════════════════════════════════════════════════════╗"
-echo "║  STEP 2/5: Installing AI development tools                       ║"
-echo "╚═══════════════════════════════════════════════════════════════════╝"
-echo ""
-update_status "2" "Installing AI development tools"
-echo "🤖 Installing Claude Code CLI..."
-echo "⚡ Installing SuperClaude..."
-echo "🌊 Installing Claude Flow @alpha..."
+show_step 2 5 "Installing AI development tools"
+echo "🤖 Installing 3 essential tools..."
 echo ""
 
 # Install Claude Code with visible progress
@@ -352,21 +346,17 @@ if python3 -m SuperClaude --version &> /dev/null 2>&1; then
     python3 -m SuperClaude install >> "$LOG_FILE" 2>&1 || true
 fi
 
-# Install Claude Flow with fallback strategy
-progress "  [3/3] Installing Claude Flow (MCP server + 90+ tools)..."
-log "Installing Claude Flow..."
-
-# Try @latest first (more stable), fallback to specific version if needed
-CLAUDE_FLOW_VERSION="latest"
-if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@${CLAUDE_FLOW_VERSION} --force >> "$LOG_FILE" 2>&1; then
+# Install Claude Flow @alpha with visible progress
+progress "  [3/3] Installing Claude Flow @alpha (MCP server + 90+ tools)..."
+log "Installing Claude Flow @alpha..."
+if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@alpha --force >> "$LOG_FILE" 2>&1; then
     if command -v claude-flow &> /dev/null; then
         success "        Claude Flow installed"
-        INSTALLED_VERSION=$(claude-flow --version 2>&1 | head -1 || echo "unknown")
-        log "Claude Flow version: $INSTALLED_VERSION"
+        log "Claude Flow version: $(claude-flow --version 2>&1 | head -1)"
 
         # Initialize Claude Flow configuration (silent)
         log "Initializing Claude Flow configuration..."
-        if timeout $PACKAGE_TIMEOUT npx claude-flow@${CLAUDE_FLOW_VERSION} init --force >> "$LOG_FILE" 2>&1; then
+        if timeout $PACKAGE_TIMEOUT claude-flow init --force >> "$LOG_FILE" 2>&1; then
             success "Claude Flow configuration initialized"
         else
             warn "Claude Flow init had issues (may need manual setup)"
@@ -375,7 +365,7 @@ if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@${CLAUDE_FLOW_VERSION} --
         # CRITICAL: Register Claude Flow as MCP server
         log "Registering Claude Flow as MCP server..."
         if command -v claude &> /dev/null; then
-            if claude mcp add claude-flow npx claude-flow@${CLAUDE_FLOW_VERSION} mcp start >> "$LOG_FILE" 2>&1; then
+            if claude mcp add claude-flow npx claude-flow@alpha mcp start >> "$LOG_FILE" 2>&1; then
                 success "        Claude Flow MCP server registered"
             else
                 error "Failed to register Claude Flow MCP server"
@@ -387,26 +377,83 @@ if timeout $PACKAGE_TIMEOUT npm install -g claude-flow@${CLAUDE_FLOW_VERSION} --
         warn "Claude Flow installation completed but command not found"
     fi
 else
-    error "Claude Flow installation failed - dependency issue detected"
-    log "Skipping Claude Flow (not critical for core functionality)"
+    warn "Claude Flow installation failed (not critical)"
 fi
 
 echo ""
+success "✅ Step 2/5 complete: All development tools installed"
+echo ""
 
-# ONE-TIME EXTENSION CLEANUP (Simple approach - no continuous monitoring)
-# devcontainer.json has ignoredRecommendations to prevent reinstall
-log "🔧 Performing one-time extension cleanup..."
+# Start ULTRA-AGGRESSIVE EXTENSION WATCHDOG
+# This watchdog runs for 20 MINUTES checking every 3 SECONDS
+# Extensions often install LATE (5-10 min after codespace opens), so we need extended monitoring
+log "🔧 Starting ultra-aggressive extension watchdog (20 min monitoring)..."
 
-VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
-if [ -d "$VSCODE_EXT_DIR" ]; then
-    # Remove unwanted extensions if they exist
-    find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*kombai*" -o -iname "*komba*" \) -exec rm -rf {} \; 2>/dev/null
-    find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*test*explorer*" -o -iname "*hocklabs*" -o -iname "*littlefox*" \) -exec rm -rf {} \; 2>/dev/null
-    find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*cline*" -o -iname "*claude-dev*" -o -iname "*saoud*" \) -exec rm -rf {} \; 2>/dev/null
-    success "One-time extension cleanup complete"
-else
-    log "Extensions directory not found yet (will be cleaned by devcontainer settings)"
-fi
+# Start watchdog as truly detached background process
+setsid bash -c '
+    VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
+    LOG_FILE="/tmp/extension-watchdog.log"
+
+    echo "========================================" >> "$LOG_FILE"
+    echo "[$(date)] ULTRA-AGGRESSIVE Watchdog started - 20 min monitoring, 3 sec checks" >> "$LOG_FILE"
+    echo "========================================" >> "$LOG_FILE"
+
+    # Wait up to 2 minutes for extensions directory to appear
+    for i in {1..120}; do
+        if [ -d "$VSCODE_EXT_DIR" ]; then
+            echo "[$(date)] Extensions directory found! Starting monitoring..." >> "$LOG_FILE"
+            break
+        fi
+        sleep 1
+    done
+
+    if [ ! -d "$VSCODE_EXT_DIR" ]; then
+        echo "[$(date)] Extensions directory never appeared" >> "$LOG_FILE"
+        exit 1
+    fi
+
+    # NOW MONITOR FOR 20 MINUTES (400 checks * 3 seconds)
+    REMOVAL_COUNT=0
+
+    for iteration in {1..400}; do
+        echo "[$(date)] Check $iteration/400" >> "$LOG_FILE"
+
+        # Remove Kombai - try multiple patterns (case-insensitive, comprehensive)
+        REMOVED=0
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*kombai*" -o -iname "*komba*" \) -exec rm -rf {} \; 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Kombai" >> "$LOG_FILE"
+            ((REMOVAL_COUNT++))
+            REMOVED=1
+        fi
+
+        # Remove Test Explorer - multiple patterns (hocklabs, littlefox, any test explorer)
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*test*explorer*" -o -iname "*hocklabs*" -o -iname "*littlefox*" \) -exec rm -rf {} \; 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Test Explorer" >> "$LOG_FILE"
+            ((REMOVAL_COUNT++))
+            REMOVED=1
+        fi
+
+        # Remove Cline - multiple patterns (cline, claude-dev, saoud)
+        if find "$VSCODE_EXT_DIR" -maxdepth 1 -type d \( -iname "*cline*" -o -iname "*claude-dev*" -o -iname "*saoud*" \) -exec rm -rf {} \; 2>/dev/null; then
+            echo "[$(date)] ✅ Removed Cline" >> "$LOG_FILE"
+            ((REMOVAL_COUNT++))
+            REMOVED=1
+        fi
+
+        # Log if we removed anything this iteration
+        if [ $REMOVED -eq 1 ]; then
+            echo "[$(date)] 🗑️  Total removals so far: $REMOVAL_COUNT" >> "$LOG_FILE"
+        fi
+
+        sleep 3
+    done
+
+    echo "[$(date)] Watchdog completed - Removed $REMOVAL_COUNT extension(s) over 20 minutes" >> "$LOG_FILE"
+    echo "========================================" >> "$LOG_FILE"
+' </dev/null >/dev/null 2>&1 &
+disown
+
+success "Ultra-aggressive extension watchdog started (20 min, 3 sec checks)"
 
 echo ""
 
@@ -414,13 +461,8 @@ echo ""
 # STEP 3: Install MCP Servers (IN PARALLEL - NEW!)
 # ═══════════════════════════════════════════════════════════════════
 
-echo ""
-echo "╔═══════════════════════════════════════════════════════════════════╗"
-echo "║  STEP 3/5: Installing MCP servers (parallel)                     ║"
-echo "╚═══════════════════════════════════════════════════════════════════╝"
-echo ""
-update_status "3" "Installing MCP servers"
-echo "🔌 Installing essential MCP servers..."
+show_step 3 5 "Installing MCP servers (parallel)"
+echo "🔌 Installing 4 essential MCP servers in parallel..."
 echo ""
 
 # Create temporary directory for installation logs
@@ -460,11 +502,10 @@ install_pip_package() {
 
 # Start all installations in parallel (background jobs)
 # NOTE: Only installing essential MCPs. Claude Flow provides 90+ additional MCPs.
-progress "Installing 4 essential MCP servers in parallel..."
-progress "  • GitHub MCP (starting...)"
-progress "  • Filesystem MCP (starting...)"
-progress "  • Playwright MCP (starting...)"
-progress "  • Sequential Thinking MCP (starting...)"
+progress "  [1/4] GitHub MCP (starting...)"
+progress "  [2/4] Filesystem MCP (starting...)"
+progress "  [3/4] Playwright MCP (starting...)"
+progress "  [4/4] Sequential Thinking MCP (starting...)"
 log "Starting parallel installations (4 essential MCPs only)..."
 
 install_npm_package "@modelcontextprotocol/server-github" "  ✅ GitHub MCP" &
@@ -491,17 +532,20 @@ for pid in $PID_1 $PID_2 $PID_3 $PID_4; do
 done
 
 echo ""
+SUCCESSFUL_INSTALLS=$((TOTAL_INSTALLS - FAILED_INSTALLS))
 if [ $FAILED_INSTALLS -eq 0 ]; then
-    success "All $TOTAL_INSTALLS essential MCP packages installed successfully!"
+    success "All $TOTAL_INSTALLS/$TOTAL_INSTALLS MCP packages installed successfully!"
     success "Claude Flow provides 90+ additional MCPs for advanced workflows"
 elif [ $FAILED_INSTALLS -le 1 ]; then
-    warn "$FAILED_INSTALLS/$TOTAL_INSTALLS installations failed (acceptable threshold)"
+    warn "$SUCCESSFUL_INSTALLS/$TOTAL_INSTALLS MCP servers installed (acceptable threshold)"
     warn "Claude Flow provides 90+ additional MCPs if needed"
 else
-    error "$FAILED_INSTALLS/$TOTAL_INSTALLS installations failed (too many failures)"
+    error "$SUCCESSFUL_INSTALLS/$TOTAL_INSTALLS MCP servers installed (too many failures)"
     error "Check logs in: $TEMP_LOG_DIR"
     error "Continuing with verification to assess impact..."
 fi
+echo ""
+success "✅ Step 3/5 complete: MCP servers installed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -509,44 +553,43 @@ echo ""
 # STEP 4: Verification
 # ═══════════════════════════════════════════════════════════════════
 
-echo ""
-echo "╔═══════════════════════════════════════════════════════════════════╗"
-echo "║  STEP 4/5: Verifying installation                                ║"
-echo "╚═══════════════════════════════════════════════════════════════════╝"
-echo ""
-update_status "4" "Verifying installation"
-echo "✅ Verifying installation..."
+show_step 4 5 "Verifying installation"
+echo "🔍 Checking installed components..."
 echo ""
 
 PASS_COUNT=0
 FAIL_COUNT=0
 
 # Check Claude Code
+progress "  [1/4] Verifying Claude Code..."
 if command -v claude &> /dev/null; then
-    success "Claude Code: $(claude --version 2>&1 | head -1)"
+    success "        Claude Code: $(claude --version 2>&1 | head -1)"
     ((PASS_COUNT++))
 else
-    error "Claude Code: Not found"
+    error "        Claude Code: Not found"
     ((FAIL_COUNT++))
 fi
 
 # Check SuperClaude (silent - optional)
+progress "  [2/4] Verifying SuperClaude..."
 if python3 -m SuperClaude --version &> /dev/null 2>&1; then
-    success "SuperClaude: $(python3 -m SuperClaude --version 2>&1 | head -1)"
+    success "        SuperClaude: $(python3 -m SuperClaude --version 2>&1 | head -1)"
     ((PASS_COUNT++))
 fi
 
 # Check .claude.json
+progress "  [3/4] Verifying .claude.json..."
 if [ -f "$HOME/.claude.json" ]; then
     MCP_COUNT=$(grep -c '"command"' "$HOME/.claude.json" 2>/dev/null || echo "0")
-    success ".claude.json: Found ($MCP_COUNT MCP servers configured)"
+    success "        .claude.json: Found ($MCP_COUNT MCP servers configured)"
     ((PASS_COUNT++))
 else
-    error ".claude.json: Missing"
+    error "        .claude.json: Missing"
     ((FAIL_COUNT++))
 fi
 
 # Check MCP packages (4 essential only - Claude Flow provides 90+ additional)
+progress "  [4/4] Verifying MCP servers..."
 MCP_INSTALLED=0
 MCP_FAILED=0
 
@@ -556,14 +599,15 @@ if npm list -g @playwright/mcp &> /dev/null; then ((MCP_INSTALLED++)); else ((MC
 if npm list -g @modelcontextprotocol/server-sequential-thinking &> /dev/null; then ((MCP_INSTALLED++)); else ((MCP_FAILED++)); fi
 
 if [ $MCP_INSTALLED -ge 3 ]; then
-    success "Essential MCP Servers: $MCP_INSTALLED/4 installed (Claude Flow provides 90+ additional)"
+    success "        Essential MCP Servers: $MCP_INSTALLED/4 installed (Claude Flow provides 90+ additional)"
     ((PASS_COUNT++))
 else
-    error "Essential MCP Servers: $MCP_INSTALLED/4 installed (minimum 3 required)"
+    error "        Essential MCP Servers: $MCP_INSTALLED/4 installed (minimum 3 required)"
     ((FAIL_COUNT++))
 fi
 
 echo ""
+success "✅ Step 4/5 complete: Installation verified"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -571,15 +615,11 @@ echo ""
 # STEP 5: AUTO-RENAME CODESPACE TO MATCH REPOSITORY
 # ═══════════════════════════════════════════════════════════════════
 
-echo ""
-echo "╔═══════════════════════════════════════════════════════════════════╗"
-echo "║  STEP 5/5: Finalizing setup                                      ║"
-echo "╚═══════════════════════════════════════════════════════════════════╝"
-echo ""
-update_status "5" "Finalizing setup"
-echo "🏷️  Finalizing codespace setup..."
+show_step 5 5 "Finalizing setup"
+echo "🏷️  Final configuration steps..."
 echo ""
 
+progress "  [1/2] Renaming codespace..."
 if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME" ]; then
 
     REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
@@ -587,9 +627,9 @@ if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME"
     if [ -n "$REPO_NAME" ]; then
         log "Renaming codespace to: $REPO_NAME"
         if gh codespace edit --codespace "$CODESPACE_NAME" --display-name "$REPO_NAME" >> "$LOG_FILE" 2>&1; then
-            success "Codespace renamed to: $REPO_NAME"
+            success "        Codespace renamed to: $REPO_NAME"
         else
-            warn "Could not auto-rename codespace (not critical, you can run 'rename-codespace' manually)"
+            warn "        Could not auto-rename codespace (not critical)"
         fi
     fi
 fi
@@ -637,7 +677,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Run cleanup scripts to ensure clean VS Code state
-progress "Suppressing VS Code welcome screens and setup prompts..."
+progress "  [2/2] Final cleanup and configuration..."
 
 if [ -f "$DOTFILES_DIR/scripts/cleanup-vscode-state.sh" ]; then
     bash "$DOTFILES_DIR/scripts/cleanup-vscode-state.sh" 2>/dev/null || true
@@ -649,10 +689,14 @@ fi
 # NEW: Suppress all welcome screens and setup prompts
 if [ -f "$DOTFILES_DIR/scripts/suppress-welcome-screens.sh" ]; then
     bash "$DOTFILES_DIR/scripts/suppress-welcome-screens.sh" 2>/dev/null || true
-    success "All welcome screens and setup prompts suppressed"
+    success "        Welcome screens and setup prompts suppressed"
 else
     log "⚠️  suppress-welcome-screens.sh not found (non-critical)"
 fi
+
+echo ""
+success "✅ Step 5/5 complete: Setup finalized"
+echo ""
 
 # Write visible summary to workspace
 SUMMARY_FILE="/workspaces/DOTFILES-INSTALL-SUMMARY.txt"
@@ -802,18 +846,27 @@ Your installation summary will appear in the new terminal.
 ════════════════════════════════════════════════════════════════════
 EOF
 
-# Mark installation as COMPLETE in status file
-COMPLETE_TIME=$(date +%s)
-cat > "$STATUS_FILE" <<STATUSEOF
-start:${START_TIME}
-step:5:Complete:${COMPLETE_TIME}
-STATUSEOF
-
 sleep 1
+
+# ═══════════════════════════════════════════════════════════════════
+# COMPLETION SIGNAL - Make it IMPOSSIBLE to miss!
+# ═══════════════════════════════════════════════════════════════════
+
+progress "Running completion signal script..."
+if [ -f "$DOTFILES_DIR/scripts/completion-signal.sh" ]; then
+    bash "$DOTFILES_DIR/scripts/completion-signal.sh" 2>&1 || true
+    success "Completion indicators created!"
+else
+    warn "completion-signal.sh not found (not critical)"
+fi
+
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+echo ""
 
 # Automatically restart terminal with fresh environment
 # This ensures DSP alias and all configurations are fully loaded
-# .bashrc will detect first-run and show welcome message with completion status
+# .bashrc will detect first-run and show welcome message
 exec bash
 
 # Clean up temp log directory if installation was successful
