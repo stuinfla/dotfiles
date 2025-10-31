@@ -129,7 +129,7 @@ run_with_timeout() {
 
     # Start heartbeat in background
     (
-        local elapsed=0
+        elapsed=0  # FIXED: Removed 'local' - not allowed in subshell
         while [ $elapsed -lt $timeout ]; do
             sleep 10
             elapsed=$((elapsed + 10))
@@ -258,8 +258,8 @@ set -m  # Enable job control
 
 # Set a timeout for the entire script - ABSOLUTE MAXIMUM 15 MINUTES
 (
-    local elapsed=0
-    local max_time=$SCRIPT_TIMEOUT
+    elapsed=0  # FIXED: Removed 'local' - not allowed in subshell
+    max_time=$SCRIPT_TIMEOUT
 
     while [ $elapsed -lt $max_time ]; do
         sleep 60  # Check every minute
@@ -502,13 +502,21 @@ log "🔧 Starting ultra-aggressive extension watchdog (20 min monitoring)..."
 setsid bash -c '
     VSCODE_EXT_DIR="$HOME/.vscode-remote/extensions"
     LOG_FILE="/tmp/extension-watchdog.log"
+    PARENT_PID='"$$"'  # FIXED: Store parent PID to check if parent is still alive
 
     echo "========================================" >> "$LOG_FILE"
     echo "[$(date)] ULTRA-AGGRESSIVE Watchdog started - 20 min monitoring, 3 sec checks" >> "$LOG_FILE"
+    echo "[$(date)] Parent PID: $PARENT_PID" >> "$LOG_FILE"
     echo "========================================" >> "$LOG_FILE"
 
     # Wait up to 2 minutes for extensions directory to appear
     for i in {1..120}; do
+        # FIXED: Check if parent process still exists
+        if ! kill -0 $PARENT_PID 2>/dev/null; then
+            echo "[$(date)] Parent process died, exiting watchdog" >> "$LOG_FILE"
+            exit 0
+        fi
+
         if [ -d "$VSCODE_EXT_DIR" ]; then
             echo "[$(date)] Extensions directory found! Starting monitoring..." >> "$LOG_FILE"
             break
@@ -525,6 +533,13 @@ setsid bash -c '
     REMOVAL_COUNT=0
 
     for iteration in {1..400}; do
+        # FIXED: Check if parent process still exists
+        if ! kill -0 $PARENT_PID 2>/dev/null; then
+            echo "[$(date)] Parent process died at iteration $iteration, exiting gracefully" >> "$LOG_FILE"
+            echo "[$(date)] Total removals before exit: $REMOVAL_COUNT" >> "$LOG_FILE"
+            exit 0
+        fi
+
         echo "[$(date)] Check $iteration/400" >> "$LOG_FILE"
 
         # Remove Kombai - try multiple patterns (case-insensitive, comprehensive)
