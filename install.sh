@@ -770,9 +770,9 @@ echo "🏷️  Final configuration steps..."
 echo ""
 
 progress "  [1/2] Renaming codespace..."
-if [ -n "$CODESPACES" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$CODESPACE_NAME" ]; then
+if [ -n "$CODESPACES" ] && [ -n "${GITHUB_REPOSITORY:-}" ] && [ -n "$CODESPACE_NAME" ]; then
 
-    REPO_NAME=$(basename "$GITHUB_REPOSITORY" 2>/dev/null)
+    REPO_NAME=$(basename "${GITHUB_REPOSITORY:-}" 2>/dev/null)
 
     if [ -n "$REPO_NAME" ]; then
         log "Renaming codespace to: $REPO_NAME"
