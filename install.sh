@@ -799,18 +799,20 @@ echo "🏷️  Final configuration steps..."
 echo ""
 
 progress "  [1/2] Renaming codespace..."
-if [ -n "$CODESPACES" ] && [ -n "${GITHUB_REPOSITORY:-}" ] && [ -n "$CODESPACE_NAME" ]; then
+if [ -n "${CODESPACES:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ] && [ -n "${CODESPACE_NAME:-}" ]; then
 
     REPO_NAME=$(basename "${GITHUB_REPOSITORY:-}" 2>/dev/null)
 
     if [ -n "$REPO_NAME" ]; then
         log "Renaming codespace to: $REPO_NAME"
-        if run_with_timeout 30 "gh codespace edit --codespace '$CODESPACE_NAME' --display-name '$REPO_NAME' >> '$LOG_FILE' 2>&1"; then
+        if run_with_timeout 30 "gh codespace edit --codespace '${CODESPACE_NAME}' --display-name '$REPO_NAME' >> '$LOG_FILE' 2>&1"; then
             success "        Codespace renamed to: $REPO_NAME"
         else
             warn "        Could not auto-rename codespace (not critical)"
         fi
     fi
+else
+    success "        Codespace setup complete (rename not needed)"
 fi
 
 echo ""
