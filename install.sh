@@ -98,6 +98,12 @@ PROGRESS LOG:
 
 EOF
 
+# Auto-open status file in VS Code so user sees it immediately
+if command -v code >/dev/null 2>&1; then
+    code "$VISIBLE_STATUS_FILE" 2>/dev/null &
+    log "Status file will auto-open in VS Code"
+fi
+
 # ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════
@@ -175,11 +181,22 @@ show_step() {
     echo "║  STEP $current/$total: $description"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo ""
-    # Update visible status file
-    echo "" >> "$VISIBLE_STATUS_FILE"
-    echo "════════════════════════════════════════════════════════════════════" >> "$VISIBLE_STATUS_FILE"
-    echo "STEP $current/$total: $description" >> "$VISIBLE_STATUS_FILE"
-    echo "════════════════════════════════════════════════════════════════════" >> "$VISIBLE_STATUS_FILE"
+
+    # Calculate progress percentage
+    local percent=$((current * 100 / total))
+    local bars=$((percent / 5))
+    local spaces=$((20 - bars))
+    local progress_bar=$(printf '█%.0s' $(seq 1 $bars))$(printf '░%.0s' $(seq 1 $spaces))
+
+    # Update visible status file with progress bar
+    {
+        echo ""
+        echo "════════════════════════════════════════════════════════════════════"
+        echo "STEP $current/$total: $description"
+        echo "Progress: [$progress_bar] $percent%"
+        echo "Time: $(date '+%H:%M:%S')"
+        echo "════════════════════════════════════════════════════════════════════"
+    } >> "$VISIBLE_STATUS_FILE"
 }
 
 # Print to log file only (with timestamp)
@@ -985,13 +1002,18 @@ EOF
 cat >> "$VISIBLE_STATUS_FILE" <<EOF
 
 ════════════════════════════════════════════════════════════════════
-✅ INSTALLATION COMPLETED SUCCESSFULLY!
+  ✅ INSTALLATION COMPLETED SUCCESSFULLY!
 ════════════════════════════════════════════════════════════════════
 
-Completed at: $(date)
+⏰ Completed at: $(date '+%Y-%m-%d %H:%M:%S')
+⏱️  Total time: ~$(($(date +%s) - START_TIME)) seconds
 
-Terminal will restart momentarily with a clean environment.
-Your installation summary will appear in the new terminal.
+🎉 Your terminal will restart in 1-2 seconds...
+💡 Watch for the welcome message with tool versions!
+
+📊 Installation Summary:
+   ✅ Passed: $PASS_COUNT checks
+   ${FAIL_COUNT:+❌ Failed: $FAIL_COUNT checks}
 
 ════════════════════════════════════════════════════════════════════
 EOF
@@ -1014,9 +1036,21 @@ echo ""
 echo "════════════════════════════════════════════════════════════════════"
 echo ""
 
+# Show clear terminal restart message so user knows what's happening
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════╗"
+echo "║                                                                   ║"
+echo "║   🔄 RESTARTING TERMINAL TO ACTIVATE NEW ENVIRONMENT...          ║"
+echo "║                                                                   ║"
+echo "║   ⏱️  This takes 1-2 seconds - watch for the welcome message!    ║"
+echo "║                                                                   ║"
+echo "╚═══════════════════════════════════════════════════════════════════╝"
+echo ""
+
 # Automatically restart terminal with fresh environment
 # This ensures DSP alias and all configurations are fully loaded
 # .bashrc will detect first-run and show welcome message
+sleep 1
 exec bash
 
 # Clean up temp log directory if installation was successful
