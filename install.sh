@@ -35,7 +35,7 @@ if [ -z "$REPO_DIR" ] || [ ! -d "$REPO_DIR" ]; then
     # Fallback: use current directory if we can't find repo
     REPO_DIR="$PWD"
 fi
-VISIBLE_STATUS_FILE="$REPO_DIR/DOTFILES-INSTALLATION-STATUS.txt"
+VISIBLE_STATUS_FILE="$REPO_DIR/🚀-INSTALLATION-IN-PROGRESS-WATCH-THIS-FILE.txt"
 
 # Debug: Log the paths we're using
 echo "DEBUG: REPO_DIR=$REPO_DIR" >> /tmp/dotfiles-startup.log
@@ -77,32 +77,44 @@ echo ""
 echo "Installation started at $(date)" > "$PROGRESS_FILE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> "$PROGRESS_FILE"
 
-# Create VISIBLE status file that appears in VS Code file explorer
-# Note: Use unquoted EOF to allow variable expansion
+# Create SUPER visible status file with unmissable filename and clear instructions
+# Emoji prefix makes it sort to top of VS Code file explorer
 cat > "$VISIBLE_STATUS_FILE" <<EOF
-════════════════════════════════════════════════════════════════════
-🚀 DOTFILES INSTALLATION IN PROGRESS
-════════════════════════════════════════════════════════════════════
+╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║   🚨 THIS IS YOUR PROGRESS FILE - WATCH IT UPDATE! 🚨              ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
 
-Installation started at: $(date)
-
-⏱️  Expected time: 3-5 minutes
-
-This file updates in real-time. Refresh to see latest progress!
-
-File location: $VISIBLE_STATUS_FILE
+⚠️  IMPORTANT: You will NOT see progress in the terminal!
+📊 GitHub hides installation output in browser terminals.
+👀 THIS file shows real-time progress with live updates!
 
 ════════════════════════════════════════════════════════════════════
-PROGRESS LOG:
+
+⏰ Started: $(date '+%Y-%m-%d %H:%M:%S')
+⏱️  Expected duration: 3-5 minutes
+📍 You are here: STEP 0/5 (Initializing...)
+
+════════════════════════════════════════════════════════════════════
+
+💡 WHAT TO EXPECT:
+
+1️⃣  This file will update every 30-60 seconds
+2️⃣  You'll see progress bars like: [████████████░░░░░░░░] 60%
+3️⃣  After 3-5 minutes, terminal will restart with welcome message
+4️⃣  If you see "Installing Dotfiles..." in terminal, that's NORMAL
+
+════════════════════════════════════════════════════════════════════
+📋 PROGRESS LOG (updates appear below):
 ════════════════════════════════════════════════════════════════════
 
 EOF
 
-# Auto-open status file in VS Code so user sees it immediately
-if command -v code >/dev/null 2>&1; then
-    code "$VISIBLE_STATUS_FILE" 2>/dev/null &
-    log "Status file will auto-open in VS Code"
-fi
+# Create a prominent message file that's visible in VS Code file explorer
+# Browser-based VS Code Web doesn't support 'code' CLI command
+# File will sort to top of file list due to emoji prefix
+log "Creating visible progress file in workspace root"
 
 # ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION
